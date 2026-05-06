@@ -38,37 +38,33 @@ def apply_material_you_theme(theme_mode: str) -> None:
         """
         <style>
         :root {
-          --pp-bg: #0f1117;
-          --pp-canvas: #151822;
-          --pp-panel: #1d2230;
-          --pp-panel-soft: #252b3a;
-          --pp-field: #10131b;
-          --pp-border: #343b4f;
-          --pp-border-strong: #4a5268;
-          --pp-text: #f5f7fb;
-          --pp-muted: #9aa4b8;
-          --pp-faint: #68738a;
-          --pp-cyan: #31e0c5;
-          --pp-blue: #6bb8ff;
-          --pp-purple: #a78bfa;
-          --pp-pink: #ff6fae;
+          --pp-bg: #f8fafc;
+          --pp-canvas: #ffffff;
+          --pp-panel: #ffffff;
+          --pp-panel-soft: #eef2f7;
+          --pp-field: #f8fafc;
+          --pp-border: #d7dde8;
+          --pp-border-strong: #d7dde8;
+          --pp-text: #111827;
+          --pp-muted: #4b5563;
+          --pp-faint: #64748b;
+          --pp-cyan: #285571;
+          --pp-blue: #285571;
+          --pp-purple: #475569;
+          --pp-pink: #0ea5e9;
           --pp-yellow: #ffd166;
           --pp-red: #ff6b78;
           --pp-green: #5de4a7;
-          --pp-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+          --pp-shadow: 0 16px 38px rgba(15, 23, 42, 0.10);
         }
 
         .stApp {
           color: var(--pp-text);
-          background:
-            radial-gradient(circle at 16% 8%, rgba(49, 224, 197, 0.10), transparent 28%),
-            radial-gradient(circle at 84% 12%, rgba(255, 111, 174, 0.09), transparent 26%),
-            linear-gradient(135deg, rgba(255,255,255,0.025) 25%, transparent 25%) 0 0 / 26px 26px,
-            var(--pp-bg);
+          background: var(--pp-bg);
         }
 
         [data-testid="stSidebar"] {
-          background: linear-gradient(180deg, #11141d 0%, #181d28 100%);
+          background: var(--pp-panel);
           border-right: 1px solid var(--pp-border);
           box-shadow: 12px 0 40px rgba(0, 0, 0, 0.20);
         }
@@ -120,9 +116,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
         }
 
         [data-testid="stMetric"] {
-          background:
-            linear-gradient(135deg, rgba(49, 224, 197, 0.08), transparent 36%),
-            var(--pp-panel);
+          background: var(--pp-panel);
           border: 1px solid var(--pp-border);
           border-radius: 8px;
           padding: 14px 16px;
@@ -143,7 +137,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
         [data-testid="stExpander"] {
           border: 1px solid var(--pp-border);
           border-radius: 8px;
-          background: rgba(29, 34, 48, 0.88);
+          background: var(--pp-panel);
           box-shadow: none;
         }
 
@@ -155,7 +149,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
         .stTabs [data-baseweb="tab-list"] {
           gap: 6px;
           border-bottom: 0;
-          background: rgba(15, 17, 23, 0.58);
+          background: var(--pp-panel);
           padding: 8px;
           border-radius: 8px 8px 0 0;
         }
@@ -169,10 +163,10 @@ def apply_material_you_theme(theme_mode: str) -> None:
         }
 
         .stTabs [aria-selected="true"] {
-          color: var(--pp-text);
-          border: 1px solid rgba(49, 224, 197, 0.42);
-          background: linear-gradient(135deg, rgba(49, 224, 197, 0.14), rgba(167, 139, 250, 0.11));
-          box-shadow: inset 0 -2px 0 var(--pp-cyan);
+          color: #ffffff;
+          border: 0;
+          background: var(--pp-cyan);
+          box-shadow: none;
         }
 
         .stButton > button {
@@ -186,10 +180,10 @@ def apply_material_you_theme(theme_mode: str) -> None:
         }
 
         .stButton > button[kind="primary"] {
-          background: linear-gradient(135deg, var(--pp-cyan), var(--pp-blue));
-          border-color: rgba(49, 224, 197, 0.55);
-          color: #081018;
-          box-shadow: 0 12px 28px rgba(49, 224, 197, 0.18);
+          background: var(--pp-cyan);
+          border-color: transparent;
+          color: #ffffff;
+          box-shadow: 0 10px 24px rgba(40, 85, 113, 0.22);
         }
 
         .stButton > button:hover {
@@ -212,17 +206,41 @@ def apply_material_you_theme(theme_mode: str) -> None:
           color: var(--pp-text);
         }
 
+        .stButton > button,
+        .stTabs [data-baseweb="tab"],
+        [data-testid="stMetric"],
+        [data-testid="stExpander"],
+        [data-testid="stStatusWidget"],
+        .pp-workspace-header,
+        .stTextInput input,
+        .stTextArea textarea,
+        .stNumberInput input,
+        .stSelectbox div[data-baseweb="select"] {
+          transition:
+            background-color 180ms ease,
+            color 180ms ease,
+            box-shadow 180ms ease,
+            transform 180ms ease,
+            opacity 180ms ease;
+        }
+
+        .stButton > button:hover,
+        [data-testid="stMetric"]:hover,
+        [data-testid="stExpander"]:hover {
+          transform: translateY(-1px);
+        }
+
         .stFileUploader section {
           border-radius: 8px;
           border: 1px dashed var(--pp-border-strong);
-          background: rgba(16, 19, 27, 0.74);
+          background: var(--pp-field);
         }
 
         .stTextInput input:focus,
         .stTextArea textarea:focus,
         .stNumberInput input:focus {
           border-color: var(--pp-cyan);
-          box-shadow: 0 0 0 1px rgba(49, 224, 197, 0.32);
+          box-shadow: 0 0 0 1px rgba(40, 85, 113, 0.28);
         }
 
         .stCheckbox label,
@@ -241,13 +259,13 @@ def apply_material_you_theme(theme_mode: str) -> None:
         .stAlert {
           border-radius: 8px;
           border: 1px solid var(--pp-border);
-          background: rgba(29, 34, 48, 0.92);
+          background: #f1f5f9;
         }
 
         [data-testid="stStatusWidget"] {
           border-radius: 8px;
           border: 1px solid var(--pp-border);
-          background: rgba(29, 34, 48, 0.94);
+          background: var(--pp-panel);
         }
 
         div[data-baseweb="notification"] {
@@ -257,12 +275,12 @@ def apply_material_you_theme(theme_mode: str) -> None:
         code {
           border-radius: 6px;
           color: var(--pp-cyan);
-          background: rgba(49, 224, 197, 0.10);
-          border: 1px solid rgba(49, 224, 197, 0.18);
+          background: #eaf2ff;
+          border: 1px solid #bfdbfe;
         }
 
         .stProgress > div > div > div > div {
-          background: linear-gradient(90deg, var(--pp-cyan), var(--pp-purple), var(--pp-pink));
+          background: linear-gradient(90deg, var(--pp-cyan), var(--pp-pink));
         }
 
         hr {
@@ -278,10 +296,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
           padding: 18px 20px;
           border: 1px solid var(--pp-border);
           border-radius: 8px;
-          background:
-            linear-gradient(135deg, rgba(49, 224, 197, 0.13), transparent 32%),
-            linear-gradient(315deg, rgba(255, 111, 174, 0.10), transparent 34%),
-            rgba(29, 34, 48, 0.88);
+          background: var(--pp-panel);
           box-shadow: var(--pp-shadow);
         }
 
@@ -314,8 +329,8 @@ def apply_material_you_theme(theme_mode: str) -> None:
           height: 28px;
           padding: 0 10px;
           border-radius: 999px;
-          border: 1px solid rgba(49, 224, 197, 0.30);
-          background: rgba(16, 19, 27, 0.74);
+          border: 1px solid var(--pp-border);
+          background: var(--pp-panel-soft);
           color: var(--pp-muted);
           font-size: 12px;
           font-weight: 650;
