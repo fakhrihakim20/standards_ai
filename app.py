@@ -610,6 +610,71 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           border-color: {palette["border"]};
           color: {palette["muted"]};
         }}
+
+        [data-testid="stMetric"],
+        [data-testid="stExpander"],
+        [data-testid="stStatusWidget"],
+        .pp-workspace-header,
+        .stTabs [data-baseweb="tab-list"] {{
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(22px) saturate(145%);
+          -webkit-backdrop-filter: blur(22px) saturate(145%);
+          border: 1px solid {"rgba(255,255,255,0.56)" if not is_night else "rgba(255,255,255,0.14)"} !important;
+          box-shadow:
+            inset 0 1px 0 {"rgba(255,255,255,0.74)" if not is_night else "rgba(255,255,255,0.18)"},
+            inset 0 -1px 0 {"rgba(15,23,42,0.08)" if not is_night else "rgba(255,255,255,0.05)"},
+            {palette["shadow"]};
+        }}
+
+        [data-testid="stMetric"]::before,
+        [data-testid="stExpander"]::before,
+        [data-testid="stStatusWidget"]::before,
+        .pp-workspace-header::before,
+        .stTabs [data-baseweb="tab-list"]::before {{
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          border-radius: inherit;
+          background:
+            linear-gradient(135deg, rgba(255,255,255,0.48), transparent 34%),
+            radial-gradient(circle at 88% 12%, {"rgba(37,99,235,0.16)" if not is_night else "rgba(96,165,250,0.20)"}, transparent 30%),
+            radial-gradient(circle at 12% 88%, rgba(255,255,255,0.18), transparent 28%);
+          mix-blend-mode: {"normal" if not is_night else "screen"};
+          opacity: {"0.62" if not is_night else "0.38"};
+        }}
+
+        [data-testid="stMetric"]::after,
+        .pp-workspace-header::after {{
+          content: "";
+          position: absolute;
+          pointer-events: none;
+          inset: 1px;
+          border-radius: inherit;
+          border: 1px solid {"rgba(255,255,255,0.54)" if not is_night else "rgba(147,197,253,0.16)"};
+          box-shadow:
+            0 0 0 1px {"rgba(37,99,235,0.05)" if not is_night else "rgba(96,165,250,0.10)"},
+            inset 10px 0 18px {"rgba(37,99,235,0.08)" if not is_night else "rgba(96,165,250,0.08)"},
+            inset -10px 0 18px {"rgba(14,165,233,0.07)" if not is_night else "rgba(56,189,248,0.07)"};
+        }}
+
+        .stButton > button {{
+          backdrop-filter: blur(14px) saturate(135%);
+          -webkit-backdrop-filter: blur(14px) saturate(135%);
+          box-shadow:
+            inset 0 1px 0 {"rgba(255,255,255,0.58)" if not is_night else "rgba(255,255,255,0.12)"},
+            0 8px 22px {"rgba(15,23,42,0.08)" if not is_night else "rgba(0,0,0,0.28)"};
+        }}
+
+        .stTextInput input,
+        .stTextArea textarea,
+        .stNumberInput input,
+        .stSelectbox div[data-baseweb="select"] {{
+          box-shadow:
+            inset 0 1px 0 {"rgba(255,255,255,0.72)" if not is_night else "rgba(255,255,255,0.06)"},
+            inset 0 -1px 0 {"rgba(15,23,42,0.04)" if not is_night else "rgba(255,255,255,0.04)"};
+        }}
         </style>
         """,
         unsafe_allow_html=True,
