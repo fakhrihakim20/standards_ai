@@ -459,6 +459,9 @@ def main() -> None:
         col2.metric(t(lang, "chunks_created"), len(chunks))
         if st.session_state.get("last_cache_action"):
             st.info(st.session_state["last_cache_action"])
+        active_service_account_email = service_account_email_from_json(get_session_drive_json())
+        if active_service_account_email:
+            st.caption(f"{t(lang, 'active_service_account')}: `{active_service_account_email}`")
         st.caption(t(lang, "index_cache_help"))
         cache_col1, cache_col2 = st.columns(2)
         if cache_col1.button(t(lang, "load_index_cache")):
@@ -468,7 +471,12 @@ def main() -> None:
                     service_account_info=get_session_drive_json(),
                 )
                 st.session_state["last_cache_action"] = t(lang, "cache_loaded_marker")
-                st.success(f"{t(lang, 'index_cache_loaded')} {t(lang, 'standards_indexed')}: {cache_result['standards']} | {t(lang, 'chunks_created')}: {cache_result['chunks']}")
+                st.success(
+                    f"{t(lang, 'index_cache_loaded')} "
+                    f"{t(lang, 'standards_indexed')}: {cache_result['standards']} | "
+                    f"{t(lang, 'chunks_created')}: {cache_result['chunks']} | "
+                    f"{t(lang, 'cache_location')}: {cache_result.get('cache_location', '-')}"
+                )
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         if cache_col2.button(t(lang, "save_index_cache")):
@@ -478,7 +486,12 @@ def main() -> None:
                     service_account_info=get_session_drive_json(),
                 )
                 st.session_state["last_cache_action"] = t(lang, "cache_saved_marker")
-                st.success(f"{t(lang, 'index_cache_saved')} {t(lang, 'standards_indexed')}: {cache_result['standards']} | {t(lang, 'chunks_created')}: {cache_result['chunks']}")
+                st.success(
+                    f"{t(lang, 'index_cache_saved')} "
+                    f"{t(lang, 'standards_indexed')}: {cache_result['standards']} | "
+                    f"{t(lang, 'chunks_created')}: {cache_result['chunks']} | "
+                    f"{t(lang, 'cache_location')}: {cache_result.get('cache_location', '-')}"
+                )
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         use_ocr = st.checkbox(t(lang, "use_ocr"), value=True, help=t(lang, "ocr_help"))

@@ -13,6 +13,7 @@ from .drive_storage import (
     GoogleDriveConfigError,
     download_text_file,
     ensure_child_folder,
+    find_child,
     get_drive_folder_id,
     get_drive_service,
     upload_text_file,
@@ -76,6 +77,36 @@ def _index_folder(service, root_folder_id: str) -> str:
     return ensure_child_folder(service, cache_id, INDEX_CACHE_FOLDER_NAME)
 
 
+def _find_index_folder(service, root_folder_id: str) -> str | None:
+    """Find the nested index cache folder without creating missing folders."""
+    cache_folder = find_child(service, root_folder_id, CACHE_FOLDER_NAME)
+    if not cache_folder:
+        return None
+    index_folder = find_child(service, cache_folder["id"], INDEX_CACHE_FOLDER_NAME)
+    return index_folder["id"] if index_folder else None
+
+
+def _index_folder_for_save(service, root_folder_id: str) -> tuple[str, str]:
+    """Return a folder id for saving index cache, falling back to the selected root."""
+    try:
+        return _index_folder(service, root_folder_id), "nested"
+    except HttpError as exc:
+        if exc.resp.status in {403, 404}:
+            return root_folder_id, "root"
+        raise
+
+
+def _index_folder_for_load(service, root_folder_id: str) -> tuple[str, str]:
+    """Return a folder id for loading index cache without requiring create permission."""
+    try:
+        index_folder = _find_index_folder(service, root_folder_id)
+    except HttpError as exc:
+        if exc.resp.status not in {403, 404}:
+            raise
+        index_folder = None
+    return (index_folder, "nested") if index_folder else (root_folder_id, "root")
+
+
 def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
     """Return a user-actionable error for common Drive permission failures."""
     if exc.resp.status in {401, 403, 404}:
@@ -132,14 +163,14 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
-        index_folder = _index_folder(service, root_folder_id)
+        index_folder, cache_location = _index_folder_for_save(service, root_folder_id)
         chunks_text = CHUNKS_PATH.read_text(encoding="utf-8") if CHUNKS_PATH.exists() else ""
         standards_text = STANDARDS_INDEX_PATH.read_text(encoding="utf-8") if STANDARDS_INDEX_PATH.exists() else "[]"
         drive_manifest_text = DRIVE_MANIFEST_PATH.read_text(encoding="utf-8") if DRIVE_MANIFEST_PATH.exists() else "[]"
         upload_text_file(service, index_folder, "chunks.jsonl", chunks_text, mime_type="application/jsonl")
         upload_text_file(service, index_folder, "standards_index.json", standards_text, mime_type="application/json")
         upload_text_file(service, index_folder, "drive_manifest.json", drive_manifest_text, mime_type="application/json")
-        return {"chunks": len(read_jsonl(CHUNKS_PATH)), "standards": len(json.loads(standards_text))}
+        return {"chunks": len(read_jsonl(CHUNKS_PATH)), "standards": len(json.loads(standards_text)), "cache_location": cache_location}
     except HttpError as exc:
         raise _drive_permission_help(exc, root_folder_id) from exc
     except Exception as exc:
@@ -152,7 +183,7 @@ def load_index_cache(folder_id: str | None = None, service_account_info: Any = N
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
-        index_folder = _index_folder(service, root_folder_id)
+        index_folder, cache_location = _index_folder_for_load(service, root_folder_id)
         chunks_text = download_text_file(service, index_folder, "chunks.jsonl")
         standards_text = download_text_file(service, index_folder, "standards_index.json")
         drive_manifest_text = download_text_file(service, index_folder, "drive_manifest.json")
@@ -163,7 +194,7 @@ def load_index_cache(folder_id: str | None = None, service_account_info: Any = N
         write_jsonl(CHUNKS_PATH, rows)
         write_json(STANDARDS_INDEX_PATH, standards)
         write_json(DRIVE_MANIFEST_PATH, json.loads(drive_manifest_text or "[]"))
-        return {"chunks": len(rows), "standards": len(standards)}
+        return {"chunks": len(rows), "standards": len(standards), "cache_location": cache_location}
     except CloudStoreError:
         raise
     except HttpError as exc:
