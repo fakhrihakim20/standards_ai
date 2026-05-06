@@ -88,9 +88,8 @@ def get_drive_service():
         raise GoogleDriveConfigError(str(exc)) from exc
 
 
-def _list_drive_children(folder_id: str, mime_type: str | None = None) -> list[dict[str, str]]:
+def _list_drive_children(service, folder_id: str, mime_type: str | None = None) -> list[dict[str, str]]:
     """List direct children in a Drive folder, optionally filtered by MIME type."""
-    service = get_drive_service()
     mime_clause = f" and mimeType = '{mime_type}'" if mime_type else ""
     query = f"'{folder_id}' in parents and trashed = false{mime_clause}"
     files: list[dict[str, str]] = []
@@ -114,19 +113,25 @@ def _list_drive_children(folder_id: str, mime_type: str | None = None) -> list[d
     return files
 
 
-def list_drive_pdfs(folder_id: str | None = None, recursive: bool = True) -> list[dict[str, str]]:
+def list_drive_pdfs(folder_id: str | None = None, recursive: bool = True, max_depth: int = 5) -> list[dict[str, str]]:
     """List PDF files in the configured Google Drive folder.
 
     Recursive listing helps when a standards library is grouped into IEC/IEEE/SPLN
     subfolders.
     """
     folder_id = folder_id or get_drive_folder_id()
+    service = get_drive_service()
+    return _list_drive_pdfs_with_service(service, folder_id, recursive, max_depth)
+
+
+def _list_drive_pdfs_with_service(service, folder_id: str, recursive: bool, max_depth: int) -> list[dict[str, str]]:
+    """List PDFs using an existing Drive service instance."""
     try:
-        files = _list_drive_children(folder_id, "application/pdf")
-        if recursive:
-            folders = _list_drive_children(folder_id, "application/vnd.google-apps.folder")
+        files = _list_drive_children(service, folder_id, "application/pdf")
+        if recursive and max_depth > 0:
+            folders = _list_drive_children(service, folder_id, "application/vnd.google-apps.folder")
             for folder in folders:
-                files.extend(list_drive_pdfs(folder["id"], recursive=True))
+                files.extend(_list_drive_pdfs_with_service(service, folder["id"], recursive=True, max_depth=max_depth - 1))
         return files
     except Exception as exc:
         raise GoogleDriveSyncError(str(exc)) from exc
@@ -141,7 +146,7 @@ def sync_drive_pdfs(folder_id: str | None = None, dest_dir: Path = PDF_DIR) -> d
     ensure_data_dirs()
     folder_id = folder_id or get_drive_folder_id()
     service = get_drive_service()
-    files = list_drive_pdfs(folder_id)
+    files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5)
     downloaded: list[str] = []
     warnings: list[str] = []
 

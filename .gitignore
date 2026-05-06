@@ -6,3 +6,4 @@ __pycache__/
 data/pdfs/
 data/index/
 *.pdf
+desktop.ini
