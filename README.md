@@ -67,6 +67,13 @@ GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
 GOOGLE_DRIVE_FOLDER_ID=your_google_drive_folder_id_here
 GOOGLE_SERVICE_ACCOUNT_FILE=path/to/service-account.json
+APP_ENCRYPTION_KEY=generate_with_python_cryptography_fernet_key
+```
+
+Generate an encryption key for saved per-user defaults:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 ## Google Drive PDF Storage
@@ -88,6 +95,7 @@ For Streamlit Community Cloud, paste secrets like this:
 GEMINI_API_KEY = "your_gemini_api_key_here"
 GEMINI_MODEL = "gemini-2.5-flash"
 GOOGLE_DRIVE_FOLDER_ID = "your_google_drive_folder_id_here"
+APP_ENCRYPTION_KEY = "generate_with_python_cryptography_fernet_key"
 GOOGLE_SERVICE_ACCOUNT_JSON = """
 {
   "type": "service_account",
@@ -103,9 +111,18 @@ GOOGLE_SERVICE_ACCOUNT_JSON = """
   "universe_domain": "googleapis.com"
 }
 """
+
+[auth]
+redirect_uri = "https://your-streamlit-app.streamlit.app/oauth2callback"
+cookie_secret = "generate_a_long_random_string"
+client_id = "your_google_oauth_client_id"
+client_secret = "your_google_oauth_client_secret"
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 ```
 
 The app downloads PDFs from Drive into temporary local storage, then builds the local JSONL index. It still does not send full PDFs to Gemini.
+
+For saving defaults and OCR/index cache back to Drive, share the Drive folder with the service account as **Editor**. Viewer access is enough for reading PDFs, but not enough for writing cache/settings files.
 
 You can also provide credentials directly in the web UI:
 
@@ -114,6 +131,49 @@ You can also provide credentials directly in the web UI:
 - Upload or paste the Google service account JSON.
 
 Credentials entered in the UI are used only for the current Streamlit session. They are not written to `.env`, JSON files, or the repository.
+
+## Google Login and Per-Account Defaults
+
+The app supports Google login through Streamlit's native OIDC login. Configure the `[auth]` block in Streamlit secrets and add the deployed URL as an authorized redirect URI in Google Cloud:
+
+```text
+https://your-streamlit-app.streamlit.app/oauth2callback
+```
+
+After login, users can save encrypted defaults per Google account:
+
+- Gemini API key
+- Gemini model
+- Google Drive folder link/ID
+- Google service account JSON
+- service account email
+
+Defaults are encrypted with `APP_ENCRYPTION_KEY` and stored as JSON files in Google Drive under:
+
+```text
+.standards_ai_cache/user_settings/
+```
+
+Do not lose or rotate `APP_ENCRYPTION_KEY` unless you are willing to discard saved defaults.
+
+## Free Cloud Database / OCR Cache
+
+Yes, this system can use a free cloud storage layer before adding a real database. For this prototype, Google Drive is used as a lightweight cloud database:
+
+```text
+.standards_ai_cache/index_cache/chunks.jsonl
+.standards_ai_cache/index_cache/standards_index.json
+```
+
+Recommended workflow for many scanned PDFs:
+
+1. Sync PDFs from Google Drive.
+2. Enable OCR.
+3. Rebuild the index once.
+4. Click `Save OCR/index cache to Drive`.
+5. On future redeploys, click `Load OCR/index cache from Drive`.
+
+This avoids repeating OCR every time Streamlit Cloud restarts. It also keeps the no-PostgreSQL/no-vector-database constraint.
 
 ## Add PDFs Locally
 

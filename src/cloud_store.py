@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+from cryptography.fernet import Fernet, InvalidToken
+
+from .drive_storage import (
+    GoogleDriveConfigError,
+    download_text_file,
+    ensure_child_folder,
+    get_drive_folder_id,
+    get_drive_service,
+    upload_text_file,
+)
+from .utils import CHUNKS_PATH, STANDARDS_INDEX_PATH, read_jsonl, write_json, write_jsonl
+
+CACHE_FOLDER_NAME = ".standards_ai_cache"
+USER_SETTINGS_FOLDER_NAME = "user_settings"
+INDEX_CACHE_FOLDER_NAME = "index_cache"
+
+
+class CloudStoreError(RuntimeError):
+    """Raised when cloud cache/settings storage fails."""
+
+
+class MissingEncryptionKeyError(CloudStoreError):
+    """Raised when encrypted user settings are requested without a key."""
+
+
+def _read_secret(key: str) -> str | None:
+    try:
+        import streamlit as st
+
+        value = st.secrets.get(key)
+        return str(value) if value else None
+    except Exception:
+        return None
+
+
+def _get_encryption_key() -> bytes:
+    key = os.getenv("APP_ENCRYPTION_KEY") or _read_secret("APP_ENCRYPTION_KEY")
+    if not key:
+        raise MissingEncryptionKeyError("APP_ENCRYPTION_KEY is missing.")
+    return key.encode("utf-8")
+
+
+def _fernet() -> Fernet:
+    try:
+        return Fernet(_get_encryption_key())
+    except ValueError as exc:
+        raise MissingEncryptionKeyError("APP_ENCRYPTION_KEY is not a valid Fernet key.") from exc
+
+
+def user_settings_filename(email: str) -> str:
+    """Create a privacy-preserving settings filename for a user email."""
+    digest = hashlib.sha256(email.lower().strip().encode("utf-8")).hexdigest()
+    return f"{digest}.json"
+
+
+def _cache_folder(service, root_folder_id: str) -> str:
+    return ensure_child_folder(service, root_folder_id, CACHE_FOLDER_NAME)
+
+
+def _settings_folder(service, root_folder_id: str) -> str:
+    cache_id = _cache_folder(service, root_folder_id)
+    return ensure_child_folder(service, cache_id, USER_SETTINGS_FOLDER_NAME)
+
+
+def _index_folder(service, root_folder_id: str) -> str:
+    cache_id = _cache_folder(service, root_folder_id)
+    return ensure_child_folder(service, cache_id, INDEX_CACHE_FOLDER_NAME)
+
+
+def save_user_settings(email: str, settings: dict[str, Any], folder_id: str | None = None, service_account_info: Any = None) -> None:
+    """Encrypt and save per-user defaults in Google Drive."""
+    if not email:
+        raise CloudStoreError("User email is required.")
+    try:
+        service = get_drive_service(service_account_info)
+        root_folder_id = get_drive_folder_id(folder_id)
+        settings_folder = _settings_folder(service, root_folder_id)
+        payload = json.dumps(settings, ensure_ascii=False)
+        encrypted = _fernet().encrypt(payload.encode("utf-8")).decode("utf-8")
+        upload_text_file(service, settings_folder, user_settings_filename(email), encrypted, mime_type="text/plain")
+    except (GoogleDriveConfigError, MissingEncryptionKeyError):
+        raise
+    except Exception as exc:
+        raise CloudStoreError(str(exc)) from exc
+
+
+def load_user_settings(email: str, folder_id: str | None = None, service_account_info: Any = None) -> dict[str, Any] | None:
+    """Load and decrypt per-user defaults from Google Drive."""
+    if not email:
+        raise CloudStoreError("User email is required.")
+    try:
+        service = get_drive_service(service_account_info)
+        root_folder_id = get_drive_folder_id(folder_id)
+        settings_folder = _settings_folder(service, root_folder_id)
+        encrypted = download_text_file(service, settings_folder, user_settings_filename(email))
+        if not encrypted:
+            return None
+        decrypted = _fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
+        return json.loads(decrypted)
+    except InvalidToken as exc:
+        raise CloudStoreError("Saved settings could not be decrypted with the current APP_ENCRYPTION_KEY.") from exc
+    except (GoogleDriveConfigError, MissingEncryptionKeyError):
+        raise
+    except Exception as exc:
+        raise CloudStoreError(str(exc)) from exc
+
+
+def save_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, int]:
+    """Save local OCR/search index files to Google Drive as a lightweight cloud database."""
+    try:
+        service = get_drive_service(service_account_info)
+        root_folder_id = get_drive_folder_id(folder_id)
+        index_folder = _index_folder(service, root_folder_id)
+        chunks_text = CHUNKS_PATH.read_text(encoding="utf-8") if CHUNKS_PATH.exists() else ""
+        standards_text = STANDARDS_INDEX_PATH.read_text(encoding="utf-8") if STANDARDS_INDEX_PATH.exists() else "[]"
+        upload_text_file(service, index_folder, "chunks.jsonl", chunks_text, mime_type="application/jsonl")
+        upload_text_file(service, index_folder, "standards_index.json", standards_text, mime_type="application/json")
+        return {"chunks": len(read_jsonl(CHUNKS_PATH)), "standards": len(json.loads(standards_text))}
+    except Exception as exc:
+        raise CloudStoreError(str(exc)) from exc
+
+
+def load_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, int]:
+    """Load cached OCR/search index files from Google Drive into local JSONL/JSON."""
+    try:
+        service = get_drive_service(service_account_info)
+        root_folder_id = get_drive_folder_id(folder_id)
+        index_folder = _index_folder(service, root_folder_id)
+        chunks_text = download_text_file(service, index_folder, "chunks.jsonl")
+        standards_text = download_text_file(service, index_folder, "standards_index.json")
+        if chunks_text is None or standards_text is None:
+            raise CloudStoreError("No saved index cache found in Google Drive.")
+        rows = [json.loads(line) for line in chunks_text.splitlines() if line.strip()]
+        standards = json.loads(standards_text)
+        write_jsonl(CHUNKS_PATH, rows)
+        write_json(STANDARDS_INDEX_PATH, standards)
+        return {"chunks": len(rows), "standards": len(standards)}
+    except CloudStoreError:
+        raise
+    except Exception as exc:
+        raise CloudStoreError(str(exc)) from exc
+

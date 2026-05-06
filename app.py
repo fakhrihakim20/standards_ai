@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +12,14 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.cloud_store import (
+    CloudStoreError,
+    MissingEncryptionKeyError,
+    load_index_cache,
+    load_user_settings,
+    save_index_cache,
+    save_user_settings,
+)
 from src.compare import retrieve_by_body
 from src.drive_storage import GoogleDriveConfigError, GoogleDriveSyncError, sync_drive_pdfs
 from src.gemini_client import GeminiClientError, MissingGeminiApiKeyError, generate_answer, get_model_name
@@ -182,6 +191,102 @@ def get_session_gemini_model() -> str:
     return st.session_state.get("custom_gemini_model", "").strip() or get_model_name()
 
 
+def auth_configured() -> bool:
+    """Return whether Streamlit OIDC auth secrets are configured."""
+    try:
+        auth = st.secrets.get("auth")
+        return bool(auth and auth.get("client_id") and auth.get("client_secret"))
+    except Exception:
+        return False
+
+
+def current_user_email() -> str:
+    """Return logged-in user email, or a guest identity for local development."""
+    try:
+        if st.user.is_logged_in:
+            return str(st.user.get("email") or st.user.get("name") or "guest")
+    except Exception:
+        pass
+    return "guest"
+
+
+def current_user_name() -> str:
+    """Return a display name for the current user."""
+    try:
+        if st.user.is_logged_in:
+            return str(st.user.get("name") or st.user.get("email") or "User")
+    except Exception:
+        pass
+    return "Guest"
+
+
+def login_screen(lang: str) -> None:
+    """Render Google login gate."""
+    st.header(t(lang, "login_required"))
+    st.write(t(lang, "login_intro"))
+    if auth_configured():
+        st.button(t(lang, "login_google"), type="primary", on_click=st.login)
+    else:
+        st.warning(t(lang, "auth_not_configured"))
+
+
+def service_account_email_from_json(raw_json: str | None) -> str:
+    """Return client_email from a service account JSON string."""
+    if not raw_json:
+        return ""
+    try:
+        return str(json.loads(raw_json).get("client_email", ""))
+    except Exception:
+        return ""
+
+
+def load_defaults_to_session(lang: str) -> None:
+    """Load encrypted per-user defaults from Drive into session state."""
+    try:
+        settings = load_user_settings(
+            current_user_email(),
+            folder_id=st.session_state.get("drive_folder_input") or None,
+            service_account_info=get_session_drive_json(),
+        )
+        if not settings:
+            st.toast(t(lang, "defaults_not_found"))
+            return
+        st.session_state["custom_gemini_api_key"] = settings.get("gemini_api_key", "")
+        st.session_state["custom_gemini_model"] = settings.get("gemini_model", get_model_name())
+        st.session_state["drive_folder_input"] = settings.get("drive_folder", "")
+        st.session_state["drive_json_paste"] = settings.get("drive_service_account_json", "")
+        st.toast(t(lang, "defaults_loaded"))
+    except MissingEncryptionKeyError:
+        st.toast(t(lang, "encryption_missing"))
+    except CloudStoreError as exc:
+        st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
+
+
+def save_defaults_from_session(lang: str) -> None:
+    """Save encrypted per-user defaults from session state to Drive."""
+    raw_drive_json = get_session_drive_json()
+    settings = {
+        "gemini_api_key": get_session_gemini_key() or "",
+        "gemini_model": get_session_gemini_model(),
+        "drive_folder": st.session_state.get("drive_folder_input", ""),
+        "drive_service_account_json": raw_drive_json or "",
+        "drive_service_account_email": service_account_email_from_json(raw_drive_json),
+        "google_account": current_user_email(),
+    }
+    try:
+        save_user_settings(
+            current_user_email(),
+            settings,
+            folder_id=settings["drive_folder"] or None,
+            service_account_info=raw_drive_json,
+        )
+        st.toast(t(lang, "defaults_saved"))
+    except MissingEncryptionKeyError:
+        st.toast(t(lang, "encryption_missing"))
+    except CloudStoreError as exc:
+        st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
+
+
 def main() -> None:
     load_dotenv()
     ensure_data_dirs()
@@ -198,7 +303,21 @@ def main() -> None:
     )
     language_name = LANGUAGES[lang]
 
+    if auth_configured():
+        try:
+            if not st.user.is_logged_in:
+                login_screen(lang)
+                st.stop()
+        except Exception:
+            login_screen(lang)
+            st.stop()
+
     st.sidebar.title(t(lang, "app_title"))
+    st.sidebar.write(f"**{t(lang, 'logged_in_as')}:** {current_user_name()}")
+    if auth_configured():
+        st.sidebar.button(t(lang, "logout"), on_click=st.logout)
+    st.sidebar.button(t(lang, "load_defaults"), on_click=load_defaults_to_session, args=(lang,))
+    st.sidebar.button(t(lang, "save_defaults"), on_click=save_defaults_from_session, args=(lang,))
     st.sidebar.text_input(
         t(lang, "custom_gemini_api_key"),
         type="password",
@@ -271,6 +390,26 @@ def main() -> None:
         col1, col2 = st.columns(2)
         col1.metric(t(lang, "standards_indexed"), len(standards))
         col2.metric(t(lang, "chunks_created"), len(chunks))
+        st.caption(t(lang, "index_cache_help"))
+        cache_col1, cache_col2 = st.columns(2)
+        if cache_col1.button(t(lang, "load_index_cache")):
+            try:
+                cache_result = load_index_cache(
+                    folder_id=drive_folder_input or None,
+                    service_account_info=get_session_drive_json(),
+                )
+                st.success(f"{t(lang, 'index_cache_loaded')} {t(lang, 'standards_indexed')}: {cache_result['standards']} | {t(lang, 'chunks_created')}: {cache_result['chunks']}")
+            except CloudStoreError as exc:
+                st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
+        if cache_col2.button(t(lang, "save_index_cache")):
+            try:
+                cache_result = save_index_cache(
+                    folder_id=drive_folder_input or None,
+                    service_account_info=get_session_drive_json(),
+                )
+                st.success(f"{t(lang, 'index_cache_saved')} {t(lang, 'standards_indexed')}: {cache_result['standards']} | {t(lang, 'chunks_created')}: {cache_result['chunks']}")
+            except CloudStoreError as exc:
+                st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         use_ocr = st.checkbox(t(lang, "use_ocr"), value=True, help=t(lang, "ocr_help"))
         ocr_language = st.selectbox(t(lang, "ocr_language"), ["eng+ind", "eng", "ind"], index=0)
 

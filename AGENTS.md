@@ -20,6 +20,7 @@ This repository is a private/internal standards assistant for IEEE, IEC, SPLN, S
 - Do not require PostgreSQL, Supabase, Firebase, Pinecone, Chroma, Qdrant, or other hosted databases.
 - Google Drive or a local synced Drive folder is the document storage layer.
 - For hosted demos, Google Drive API service-account sync may download PDFs into temporary local storage before indexing.
+- Google Drive JSON/JSONL files may be used as the free cloud cache for encrypted per-user defaults and OCR/index results.
 - Use PyMuPDF for PDF extraction.
 - Use Tesseract OCR only as a local fallback for scanned PDFs; do not send full PDFs to Gemini for OCR.
 - Use scikit-learn TF-IDF search for the first version.
@@ -34,6 +35,7 @@ This repository is a private/internal standards assistant for IEEE, IEC, SPLN, S
 - Handle missing files, empty PDFs, scanned PDFs, and missing API keys gracefully.
 - Do not log full standard excerpts by default.
 - Do not commit `.env`, Streamlit secrets, service account keys, generated indexes, or standards PDFs.
+- Do not store user API keys or service account JSON unencrypted.
 - Do not hardcode English UI text directly in Streamlit components. Use the translation dictionary.
 
 ## Main user flows

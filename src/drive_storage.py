@@ -9,11 +9,11 @@ from typing import Any
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 from .utils import PDF_DIR, ensure_data_dirs
 
-DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 
@@ -99,7 +99,7 @@ def get_drive_service(service_account_info: dict[str, Any] | str | None = None):
         info = _load_service_account_info(service_account_info)
         credentials = service_account.Credentials.from_service_account_info(
             info,
-            scopes=[DRIVE_READONLY_SCOPE],
+            scopes=[DRIVE_SCOPE],
         )
         return build("drive", "v3", credentials=credentials, cache_discovery=False)
     except GoogleDriveConfigError:
@@ -131,6 +131,52 @@ def _list_drive_children(service, folder_id: str, mime_type: str | None = None) 
         if not page_token:
             break
     return files
+
+
+def find_child(service, parent_id: str, name: str, mime_type: str | None = None) -> dict[str, str] | None:
+    """Find a direct child by exact name."""
+    mime_clause = f" and mimeType = '{mime_type}'" if mime_type else ""
+    escaped_name = name.replace("'", "\\'")
+    query = f"'{parent_id}' in parents and name = '{escaped_name}' and trashed = false{mime_clause}"
+    response = service.files().list(q=query, fields="files(id, name, mimeType)", pageSize=1).execute()
+    files = response.get("files", [])
+    return files[0] if files else None
+
+
+def ensure_child_folder(service, parent_id: str, name: str) -> str:
+    """Create or return a child folder under a Drive parent."""
+    existing = find_child(service, parent_id, name, FOLDER_MIME_TYPE)
+    if existing:
+        return existing["id"]
+    metadata = {"name": name, "mimeType": FOLDER_MIME_TYPE, "parents": [parent_id]}
+    folder = service.files().create(body=metadata, fields="id").execute()
+    return folder["id"]
+
+
+def upload_text_file(service, parent_id: str, name: str, content: str, mime_type: str = "application/json") -> str:
+    """Create or replace a UTF-8 text file in Google Drive."""
+    media = MediaIoBaseUpload(io.BytesIO(content.encode("utf-8")), mimetype=mime_type, resumable=False)
+    existing = find_child(service, parent_id, name)
+    if existing:
+        updated = service.files().update(fileId=existing["id"], media_body=media, fields="id").execute()
+        return updated["id"]
+    metadata = {"name": name, "parents": [parent_id], "mimeType": mime_type}
+    created = service.files().create(body=metadata, media_body=media, fields="id").execute()
+    return created["id"]
+
+
+def download_text_file(service, parent_id: str, name: str) -> str | None:
+    """Download a UTF-8 text file from Google Drive."""
+    existing = find_child(service, parent_id, name)
+    if not existing:
+        return None
+    request = service.files().get_media(fileId=existing["id"])
+    buffer = io.BytesIO()
+    downloader = MediaIoBaseDownload(buffer, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    return buffer.getvalue().decode("utf-8")
 
 
 def list_drive_pdfs(
