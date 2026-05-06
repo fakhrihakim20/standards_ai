@@ -364,44 +364,50 @@ def main() -> None:
 
     with tabs[0]:
         st.header(t(lang, "index_pdfs"))
-        st.subheader(t(lang, "drive_sync"))
-        st.caption(t(lang, "drive_sync_help"))
-        drive_folder_input = st.text_input(t(lang, "drive_folder"), key="drive_folder_input")
-        st.file_uploader(
-            t(lang, "drive_json_upload"),
-            type=["json"],
-            key="drive_json_upload",
-            help=t(lang, "drive_json_help"),
-        )
-        st.text_area(
-            t(lang, "drive_json_paste"),
-            key="drive_json_paste",
-            height=120,
-            help=t(lang, "drive_json_help"),
-        )
-        filter_col, depth_col, limit_col = st.columns(3)
-        drive_path_filter = filter_col.text_input(
-            t(lang, "drive_path_filter"),
-            key="drive_path_filter",
-            help=t(lang, "drive_path_filter_help"),
-        )
-        drive_max_depth = depth_col.number_input(
-            t(lang, "drive_max_depth"),
-            min_value=0,
-            max_value=10,
-            value=2,
-            step=1,
-            help=t(lang, "drive_max_depth_help"),
-        )
-        drive_max_files = limit_col.number_input(
-            t(lang, "drive_max_files"),
-            min_value=0,
-            max_value=10000,
-            value=100,
-            step=50,
-            help=t(lang, "drive_max_files_help"),
-        )
-        drive_recursive = st.checkbox(t(lang, "drive_recursive"), value=True, help=t(lang, "drive_recursive_help"))
+        with st.expander(t(lang, "drive_sync_settings"), expanded=False):
+            st.subheader(t(lang, "drive_sync"))
+            st.caption(t(lang, "drive_sync_help"))
+            drive_folder_input = st.text_input(t(lang, "drive_folder"), key="drive_folder_input")
+            st.file_uploader(
+                t(lang, "drive_json_upload"),
+                type=["json"],
+                key="drive_json_upload",
+                help=t(lang, "drive_json_help"),
+            )
+            st.text_area(
+                t(lang, "drive_json_paste"),
+                key="drive_json_paste",
+                height=120,
+                help=t(lang, "drive_json_help"),
+            )
+            filter_col, depth_col, limit_col = st.columns(3)
+            drive_path_filter = filter_col.text_input(
+                t(lang, "drive_path_filter"),
+                key="drive_path_filter",
+                help=t(lang, "drive_path_filter_help"),
+            )
+            drive_max_depth = depth_col.number_input(
+                t(lang, "drive_max_depth"),
+                min_value=0,
+                max_value=10,
+                value=2,
+                step=1,
+                help=t(lang, "drive_max_depth_help"),
+            )
+            drive_max_files = limit_col.number_input(
+                t(lang, "drive_max_files"),
+                min_value=0,
+                max_value=10000,
+                value=100,
+                step=50,
+                help=t(lang, "drive_max_files_help"),
+            )
+            drive_recursive = st.checkbox(t(lang, "drive_recursive"), value=True, help=t(lang, "drive_recursive_help"))
+        drive_folder_input = st.session_state.get("drive_folder_input", "")
+        drive_path_filter = st.session_state.get("drive_path_filter", "")
+        drive_max_depth = st.session_state.get("drive_max_depth", 2)
+        drive_max_files = st.session_state.get("drive_max_files", 100)
+        drive_recursive = st.session_state.get("drive_recursive", True)
         drive_col1, drive_col2 = st.columns(2)
         if drive_col1.button(t(lang, "sync_drive"), type="secondary"):
             try:
@@ -472,34 +478,36 @@ def main() -> None:
         if active_service_account_email:
             st.caption(f"{t(lang, 'active_service_account')}: `{active_service_account_email}`")
         st.caption(t(lang, "index_cache_help"))
-        cache_folder_input = st.text_input(
-            t(lang, "index_cache_folder"),
-            value=st.session_state.get("index_cache_folder_input", ""),
-            key="index_cache_folder_input",
-            help=t(lang, "index_cache_folder_help"),
-        )
+        with st.expander(t(lang, "index_cache_settings"), expanded=False):
+            cache_folder_input = st.text_input(
+                t(lang, "index_cache_folder"),
+                value=st.session_state.get("index_cache_folder_input", ""),
+                key="index_cache_folder_input",
+                help=t(lang, "index_cache_folder_help"),
+            )
+            if st.button(t(lang, "test_cache_folder")):
+                try:
+                    diagnostic = diagnose_index_cache_folder(
+                        folder_id=cache_folder_input or drive_folder_input or None,
+                        service_account_info=get_session_drive_json(),
+                        write_test=True,
+                    )
+                    st.json(diagnostic)
+                    capabilities = diagnostic.get("capabilities", {})
+                    if not capabilities.get("canAddChildren"):
+                        st.warning(t(lang, "cache_folder_no_write"))
+                    elif diagnostic.get("write_test") == "ok":
+                        st.success(t(lang, "cache_folder_write_ok"))
+                    elif diagnostic.get("existing_file_update_test") == "ok":
+                        st.success(t(lang, "cache_folder_update_ok"))
+                    elif diagnostic.get("write_test") == "failed":
+                        st.warning(t(lang, "cache_folder_write_failed"))
+                except CloudStoreError as exc:
+                    st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
+        cache_folder_input = st.session_state.get("index_cache_folder_input", "")
         cache_folder_id = cache_folder_input or drive_folder_input or None
         if cache_folder_id:
             st.caption(f"{t(lang, 'cache_folder_target')}: `{cache_folder_id}`")
-        if st.button(t(lang, "test_cache_folder")):
-            try:
-                diagnostic = diagnose_index_cache_folder(
-                    folder_id=cache_folder_id,
-                    service_account_info=get_session_drive_json(),
-                    write_test=True,
-                )
-                st.json(diagnostic)
-                capabilities = diagnostic.get("capabilities", {})
-                if not capabilities.get("canAddChildren"):
-                    st.warning(t(lang, "cache_folder_no_write"))
-                elif diagnostic.get("write_test") == "ok":
-                    st.success(t(lang, "cache_folder_write_ok"))
-                elif diagnostic.get("existing_file_update_test") == "ok":
-                    st.success(t(lang, "cache_folder_update_ok"))
-                elif diagnostic.get("write_test") == "failed":
-                    st.warning(t(lang, "cache_folder_write_failed"))
-            except CloudStoreError as exc:
-                st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         cache_col1, cache_col2 = st.columns(2)
         if cache_col1.button(t(lang, "load_index_cache")):
             try:
