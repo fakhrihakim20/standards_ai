@@ -25,6 +25,7 @@ from .utils import CHUNKS_PATH, DRIVE_MANIFEST_PATH, STANDARDS_INDEX_PATH, read_
 CACHE_FOLDER_NAME = ".standards_ai_cache"
 USER_SETTINGS_FOLDER_NAME = "user_settings"
 INDEX_CACHE_FOLDER_NAME = "index_cache"
+LEGACY_INDEX_CACHE_FOLDER_NAME = "index"
 INDEX_CACHE_FILES = ("chunks.jsonl", "standards_index.json", "drive_manifest.json")
 CHUNKS_CACHE_NAMES = ("chunks.jsonl", "chunk.jsonl")
 STANDARDS_CACHE_NAMES = ("standards_index.json", "standard_index.json", "standards.json")
@@ -154,6 +155,9 @@ def _cache_folder_candidates(service, root_folder_id: str) -> list[tuple[str, st
         index_folder = None
     if index_folder:
         candidates.append((index_folder, "nested"))
+    legacy_index_folder = find_child(service, root_folder_id, LEGACY_INDEX_CACHE_FOLDER_NAME)
+    if legacy_index_folder:
+        candidates.append((legacy_index_folder["id"], "index"))
     candidates.append((root_folder_id, "root"))
     return candidates
 
