@@ -249,6 +249,14 @@ def login_screen(lang: str) -> None:
         st.warning(t(lang, "auth_not_configured"))
 
 
+def update_status(status, label: str, state: str = "running") -> None:
+    """Update a Streamlit status object, falling back to markdown placeholders."""
+    if hasattr(status, "update"):
+        status.update(label=label, state=state)
+    else:
+        status.write(label)
+
+
 def service_account_email_from_json(raw_json: str | None) -> str:
     """Return client_email from a service account JSON string."""
     if not raw_json:
@@ -564,25 +572,34 @@ def main() -> None:
             if not question.strip():
                 st.error(t(lang, "empty_query"))
             else:
-                retrieved = search_chunks(question, body=ask_body, top_k=ask_top_k)
-                if not retrieved:
-                    st.warning(t(lang, "no_results"))
-                else:
-                    prompt = build_ask_prompt(question, retrieved, language_name, lang)
-                    try:
-                        answer = generate_answer(
-                            prompt,
-                            api_key=get_session_gemini_key(),
-                            model_name=get_session_gemini_model(),
-                        )
-                        st.subheader(t(lang, "answer"))
-                        st.markdown(answer)
-                    except MissingGeminiApiKeyError:
-                        st.error(t(lang, "missing_api"))
-                    except GeminiClientError as exc:
-                        st.error(f"{t(lang, 'gemini_error')}: {exc}")
-                    st.subheader(t(lang, "retrieved_sources"))
-                    render_chunks(retrieved, lang)
+                with st.status(t(lang, "ask_status_start"), expanded=True) as status:
+                    status.write(t(lang, "status_searching"))
+                    retrieved = search_chunks(question, body=ask_body, top_k=ask_top_k)
+                    status.write(f"{t(lang, 'status_sources_found')}: {len(retrieved)}")
+                    if not retrieved:
+                        update_status(status, t(lang, "status_no_sources"), "error")
+                        st.warning(t(lang, "no_results"))
+                    else:
+                        status.write(t(lang, "status_building_prompt"))
+                        prompt = build_ask_prompt(question, retrieved, language_name, lang)
+                        try:
+                            status.write(t(lang, "status_calling_gemini"))
+                            answer = generate_answer(
+                                prompt,
+                                api_key=get_session_gemini_key(),
+                                model_name=get_session_gemini_model(),
+                            )
+                            update_status(status, t(lang, "status_done"), "complete")
+                            st.subheader(t(lang, "answer"))
+                            st.markdown(answer)
+                        except MissingGeminiApiKeyError:
+                            update_status(status, t(lang, "status_failed"), "error")
+                            st.error(t(lang, "missing_api"))
+                        except GeminiClientError as exc:
+                            update_status(status, t(lang, "status_failed"), "error")
+                            st.error(f"{t(lang, 'gemini_error')}: {exc}")
+                        st.subheader(t(lang, "retrieved_sources"))
+                        render_chunks(retrieved, lang)
 
     with tabs[2]:
         st.header(t(lang, "compare"))
@@ -599,27 +616,37 @@ def main() -> None:
             if not topic.strip():
                 st.error(t(lang, "empty_query"))
             else:
-                grouped = retrieve_by_body(topic, selected, compare_top_k)
-                if not any(grouped.values()):
-                    st.warning(t(lang, "no_results"))
-                else:
-                    prompt = build_compare_prompt(topic, grouped, language_name)
-                    try:
-                        answer = generate_answer(
-                            prompt,
-                            api_key=get_session_gemini_key(),
-                            model_name=get_session_gemini_model(),
-                        )
-                        st.subheader(t(lang, "answer"))
-                        st.markdown(answer)
-                    except MissingGeminiApiKeyError:
-                        st.error(t(lang, "missing_api"))
-                    except GeminiClientError as exc:
-                        st.error(f"{t(lang, 'gemini_error')}: {exc}")
-                    st.subheader(t(lang, "grouped_evidence"))
-                    for body_name, evidence in grouped.items():
-                        st.markdown(f"### {body_name}")
-                        render_chunks(evidence, lang)
+                with st.status(t(lang, "compare_status_start"), expanded=True) as status:
+                    status.write(t(lang, "status_searching_by_body"))
+                    grouped = retrieve_by_body(topic, selected, compare_top_k)
+                    evidence_count = sum(len(items) for items in grouped.values())
+                    status.write(f"{t(lang, 'status_sources_found')}: {evidence_count}")
+                    if not any(grouped.values()):
+                        update_status(status, t(lang, "status_no_sources"), "error")
+                        st.warning(t(lang, "no_results"))
+                    else:
+                        status.write(t(lang, "status_building_prompt"))
+                        prompt = build_compare_prompt(topic, grouped, language_name)
+                        try:
+                            status.write(t(lang, "status_calling_gemini"))
+                            answer = generate_answer(
+                                prompt,
+                                api_key=get_session_gemini_key(),
+                                model_name=get_session_gemini_model(),
+                            )
+                            update_status(status, t(lang, "status_done"), "complete")
+                            st.subheader(t(lang, "answer"))
+                            st.markdown(answer)
+                        except MissingGeminiApiKeyError:
+                            update_status(status, t(lang, "status_failed"), "error")
+                            st.error(t(lang, "missing_api"))
+                        except GeminiClientError as exc:
+                            update_status(status, t(lang, "status_failed"), "error")
+                            st.error(f"{t(lang, 'gemini_error')}: {exc}")
+                        st.subheader(t(lang, "grouped_evidence"))
+                        for body_name, evidence in grouped.items():
+                            st.markdown(f"### {body_name}")
+                            render_chunks(evidence, lang)
 
     with tabs[3]:
         st.header(t(lang, "settings"))
