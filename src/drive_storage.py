@@ -14,6 +14,8 @@ from googleapiclient.http import MediaIoBaseDownload
 from .utils import PDF_DIR, ensure_data_dirs
 
 DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 
 
 class GoogleDriveConfigError(RuntimeError):
@@ -118,7 +120,7 @@ def _list_drive_children(service, folder_id: str, mime_type: str | None = None) 
             .list(
                 q=query,
                 spaces="drive",
-                fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
+                fields="nextPageToken, files(id, name, mimeType, modifiedTime, size, shortcutDetails)",
                 pageToken=page_token,
                 orderBy="name",
             )
@@ -144,23 +146,60 @@ def list_drive_pdfs(
     """
     folder_id = get_drive_folder_id(folder_id)
     service = get_drive_service(service_account_info)
-    return _list_drive_pdfs_with_service(service, folder_id, recursive, max_depth, path="")
+    return _list_drive_pdfs_with_service(service, folder_id, recursive, max_depth, path="", visited=set())
 
 
-def _list_drive_pdfs_with_service(service, folder_id: str, recursive: bool, max_depth: int, path: str) -> list[dict[str, str]]:
+def _list_drive_pdfs_with_service(
+    service,
+    folder_id: str,
+    recursive: bool,
+    max_depth: int,
+    path: str,
+    visited: set[str],
+) -> list[dict[str, str]]:
     """List PDFs using an existing Drive service instance."""
     try:
+        if folder_id in visited:
+            return []
+        visited.add(folder_id)
+
         files = _list_drive_children(service, folder_id, "application/pdf")
         for file_info in files:
             file_info["drive_path"] = f"{path}/{file_info['name']}".strip("/")
         if recursive and max_depth > 0:
-            folders = _list_drive_children(service, folder_id, "application/vnd.google-apps.folder")
+            folders = _list_drive_children(service, folder_id, FOLDER_MIME_TYPE)
+            shortcuts = [
+                item
+                for item in _list_drive_children(service, folder_id, SHORTCUT_MIME_TYPE)
+                if item.get("shortcutDetails", {}).get("targetMimeType") == FOLDER_MIME_TYPE
+            ]
+            for shortcut in shortcuts:
+                shortcut["id"] = shortcut["shortcutDetails"]["targetId"]
+                folders.append(shortcut)
+
             for folder in folders:
                 folder_path = f"{path}/{folder['name']}".strip("/")
-                files.extend(_list_drive_pdfs_with_service(service, folder["id"], recursive=True, max_depth=max_depth - 1, path=folder_path))
+                files.extend(
+                    _list_drive_pdfs_with_service(
+                        service,
+                        folder["id"],
+                        recursive=True,
+                        max_depth=max_depth - 1,
+                        path=folder_path,
+                        visited=visited,
+                    )
+                )
         return files
     except Exception as exc:
         raise GoogleDriveSyncError(str(exc)) from exc
+
+
+def _local_relative_pdf_path(drive_path: str) -> Path:
+    """Map a Drive path to a safe local path under data/pdfs."""
+    parts = [part for part in Path(drive_path.replace("\\", "/")).parts if part not in ("", ".", "..")]
+    if "pdfs" in parts:
+        parts = parts[parts.index("pdfs") + 1 :]
+    return Path(*parts) if parts else Path(Path(drive_path).name)
 
 
 def sync_drive_pdfs(
@@ -176,7 +215,7 @@ def sync_drive_pdfs(
     ensure_data_dirs()
     folder_id = get_drive_folder_id(folder_id)
     service = get_drive_service(service_account_info)
-    files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5, path="")
+    files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5, path="", visited=set())
     downloaded: list[str] = []
     locations: list[dict[str, str]] = []
     warnings: list[str] = []
@@ -186,8 +225,11 @@ def sync_drive_pdfs(
         file_name = Path(file_info["name"]).name
         if not file_name.lower().endswith(".pdf"):
             file_name = f"{file_name}.pdf"
-        target_path = dest_dir / file_name
+        drive_path = file_info.get("drive_path", file_name)
+        local_relative_path = _local_relative_pdf_path(drive_path)
+        target_path = dest_dir / local_relative_path
         try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
             request = service.files().get_media(fileId=file_id)
             buffer = io.BytesIO()
             downloader = MediaIoBaseDownload(buffer, request)
@@ -195,8 +237,8 @@ def sync_drive_pdfs(
             while not done:
                 _, done = downloader.next_chunk()
             target_path.write_bytes(buffer.getvalue())
-            downloaded.append(file_name)
-            locations.append({"file": file_name, "drive_path": file_info.get("drive_path", file_name)})
+            downloaded.append(str(local_relative_path))
+            locations.append({"file": str(local_relative_path), "drive_path": drive_path})
         except Exception as exc:
             warnings.append(f"{file_name}: {exc}")
 

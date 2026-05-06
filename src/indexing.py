@@ -21,7 +21,7 @@ def list_pdfs(pdf_dir: Path = PDF_DIR) -> list[Path]:
     """List PDFs in the storage folder."""
     if not pdf_dir.exists():
         return []
-    return sorted(pdf_dir.glob("*.pdf"))
+    return sorted(pdf_dir.rglob("*.pdf"))
 
 
 def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: str = "eng+ind") -> dict:
@@ -40,6 +40,7 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
     for pdf_path in pdfs:
         body = detect_body(pdf_path.name)
         standard_number = detect_standard_number(pdf_path.name, body)
+        source_file = str(pdf_path.relative_to(pdf_dir)).replace("\\", "/")
         pages, pdf_warnings = extract_pdf_pages(pdf_path, use_ocr=use_ocr, ocr_language=ocr_language)
         warnings.extend(pdf_warnings)
         chunk_count = 0
@@ -63,7 +64,7 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
                 chunks.append(
                     {
                         "chunk_id": chunk_id,
-                        "source_file": pdf_path.name,
+                        "source_file": source_file,
                         "body": body,
                         "standard_number": standard_number,
                         "title": "",
@@ -79,7 +80,7 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
             warnings.append(f"{pdf_path.name}: no chunks created.")
         standards.append(
             {
-                "source_file": pdf_path.name,
+                "source_file": source_file,
                 "body": body,
                 "standard_number": standard_number,
                 "title": "",
