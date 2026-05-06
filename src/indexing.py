@@ -24,7 +24,7 @@ def list_pdfs(pdf_dir: Path = PDF_DIR) -> list[Path]:
     return sorted(pdf_dir.glob("*.pdf"))
 
 
-def build_index(pdf_dir: Path = PDF_DIR) -> dict:
+def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: str = "eng+ind") -> dict:
     """Extract PDFs and rebuild JSONL/JSON indexes from scratch."""
     ensure_data_dirs()
     pdfs = list_pdfs(pdf_dir)
@@ -40,7 +40,7 @@ def build_index(pdf_dir: Path = PDF_DIR) -> dict:
     for pdf_path in pdfs:
         body = detect_body(pdf_path.name)
         standard_number = detect_standard_number(pdf_path.name, body)
-        pages, pdf_warnings = extract_pdf_pages(pdf_path)
+        pages, pdf_warnings = extract_pdf_pages(pdf_path, use_ocr=use_ocr, ocr_language=ocr_language)
         warnings.extend(pdf_warnings)
         chunk_count = 0
         current_clause = ""
@@ -92,4 +92,3 @@ def build_index(pdf_dir: Path = PDF_DIR) -> dict:
     write_jsonl(CHUNKS_PATH, chunks)
     write_json(STANDARDS_INDEX_PATH, standards)
     return {"standards": len(standards), "chunks": len(chunks), "warnings": warnings}
-

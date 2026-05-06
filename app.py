@@ -112,10 +112,12 @@ def main() -> None:
         col1, col2 = st.columns(2)
         col1.metric(t(lang, "standards_indexed"), len(standards))
         col2.metric(t(lang, "chunks_created"), len(chunks))
+        use_ocr = st.checkbox(t(lang, "use_ocr"), value=True, help=t(lang, "ocr_help"))
+        ocr_language = st.selectbox(t(lang, "ocr_language"), ["eng+ind", "eng", "ind"], index=0)
 
         if st.button(t(lang, "rebuild_index"), type="primary"):
             with st.spinner(t(lang, "rebuild_index")):
-                result = build_index()
+                result = build_index(use_ocr=use_ocr, ocr_language=ocr_language)
             st.success(f"{t(lang, 'standards_indexed')}: {result['standards']} | {t(lang, 'chunks_created')}: {result['chunks']}")
             if result["warnings"]:
                 st.warning(t(lang, "warnings"))

@@ -12,6 +12,7 @@ This app is for private/internal use with documents you have rights to access. D
 standards_ai/
 |-- app.py
 |-- requirements.txt
+|-- packages.txt
 |-- .env.example
 |-- .gitignore
 |-- README.md
@@ -31,6 +32,7 @@ standards_ai/
     |-- compare.py
     |-- drive_storage.py
     |-- gemini_client.py
+    |-- ocr.py
     |-- prompts.py
     |-- i18n.py
     `-- utils.py
@@ -126,7 +128,9 @@ The app creates:
 - `data/index/chunks.jsonl`
 - `data/index/standards_index.json`
 
-If a PDF has little or no extractable text, the app warns that it may be scanned. OCR is not implemented in v1.
+If a PDF has little or no extractable text, enable `Gunakan OCR untuk PDF hasil scan / Use OCR for scanned PDFs` before rebuilding the index. OCR uses local Tesseract after the PDF is downloaded or placed locally. It still does not send full PDFs to Gemini.
+
+For local Windows usage, install Tesseract OCR separately if OCR fails with `Tesseract executable is not installed`. Streamlit Community Cloud installs Tesseract from `packages.txt`.
 
 ## Search
 
@@ -158,6 +162,6 @@ Recommended free deployment:
 - Google Drive configuration missing: set `GOOGLE_DRIVE_FOLDER_ID` and service account credentials.
 - Google Drive finds no PDFs: confirm the folder ID is correct and the folder is shared with the service account email.
 - No PDFs found: place PDFs in `data/pdfs/`.
-- Empty or scanned PDFs: PyMuPDF may not extract text from scanned documents; OCR is not included in v1.
+- Empty or scanned PDFs: enable OCR when rebuilding the index. If OCR is unavailable locally, install Tesseract OCR and make sure it is on PATH.
 - Gemini API error: check your API key, internet connection, quota, and model name.
 - Poor search results: use more specific technical terms, standard numbers, gas names such as `CO`, `CO2`, `H2`, `CH4`, `C2H2`, or increase the number of excerpts.

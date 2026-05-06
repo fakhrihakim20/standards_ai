@@ -21,6 +21,7 @@ This repository is a private/internal standards assistant for IEEE, IEC, SPLN, S
 - Google Drive or a local synced Drive folder is the document storage layer.
 - For hosted demos, Google Drive API service-account sync may download PDFs into temporary local storage before indexing.
 - Use PyMuPDF for PDF extraction.
+- Use Tesseract OCR only as a local fallback for scanned PDFs; do not send full PDFs to Gemini for OCR.
 - Use scikit-learn TF-IDF search for the first version.
 - Gemini 2.5 Flash is used only for answer generation after retrieval.
 
