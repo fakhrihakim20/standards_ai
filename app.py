@@ -731,6 +731,30 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           background: {palette["primary"]} !important;
           color: {palette["primary_text"]} !important;
         }}
+
+        .stSelectbox *,
+        .stSelectbox [role="combobox"],
+        .stSelectbox [aria-haspopup="listbox"],
+        .stSelectbox [aria-expanded],
+        div[data-baseweb="select"],
+        div[data-baseweb="select"] *,
+        input[role="combobox"],
+        input[aria-haspopup="listbox"] {{
+          border: 0 !important;
+          outline: 0 !important;
+          box-shadow: none !important;
+        }}
+
+        .stSelectbox div[data-baseweb="select"],
+        div[data-baseweb="select"] {{
+          background: {palette["field"]} !important;
+          border-radius: 18px !important;
+        }}
+
+        input[role="combobox"],
+        input[aria-haspopup="listbox"] {{
+          background: transparent !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
