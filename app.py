@@ -32,121 +32,304 @@ from src.search import search_chunks
 from src.utils import BODIES, CHUNKS_PATH, DRIVE_MANIFEST_PATH, PDF_DIR, STANDARDS_INDEX_PATH, ensure_data_dirs, read_json, read_jsonl, write_json
 
 
-def apply_github_theme() -> None:
-    """Apply a compact GitHub-inspired visual theme to Streamlit."""
+def apply_penpot_theme() -> None:
+    """Apply a Penpot-inspired dark workspace visual theme to Streamlit."""
     st.markdown(
         """
         <style>
         :root {
-          --gh-canvas: #ffffff;
-          --gh-canvas-subtle: #f6f8fa;
-          --gh-border: #d0d7de;
-          --gh-fg: #24292f;
-          --gh-muted: #57606a;
-          --gh-accent: #0969da;
-          --gh-success: #1a7f37;
-          --gh-danger: #cf222e;
+          --pp-bg: #0f1117;
+          --pp-canvas: #151822;
+          --pp-panel: #1d2230;
+          --pp-panel-soft: #252b3a;
+          --pp-field: #10131b;
+          --pp-border: #343b4f;
+          --pp-border-strong: #4a5268;
+          --pp-text: #f5f7fb;
+          --pp-muted: #9aa4b8;
+          --pp-faint: #68738a;
+          --pp-cyan: #31e0c5;
+          --pp-blue: #6bb8ff;
+          --pp-purple: #a78bfa;
+          --pp-pink: #ff6fae;
+          --pp-yellow: #ffd166;
+          --pp-red: #ff6b78;
+          --pp-green: #5de4a7;
+          --pp-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
         }
 
         .stApp {
-          background: var(--gh-canvas);
-          color: var(--gh-fg);
+          color: var(--pp-text);
+          background:
+            radial-gradient(circle at 16% 8%, rgba(49, 224, 197, 0.10), transparent 28%),
+            radial-gradient(circle at 84% 12%, rgba(255, 111, 174, 0.09), transparent 26%),
+            linear-gradient(135deg, rgba(255,255,255,0.025) 25%, transparent 25%) 0 0 / 26px 26px,
+            var(--pp-bg);
         }
 
         [data-testid="stSidebar"] {
-          background: var(--gh-canvas-subtle);
-          border-right: 1px solid var(--gh-border);
+          background: linear-gradient(180deg, #11141d 0%, #181d28 100%);
+          border-right: 1px solid var(--pp-border);
+          box-shadow: 12px 0 40px rgba(0, 0, 0, 0.20);
+        }
+
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3 {
+          color: var(--pp-text);
         }
 
         [data-testid="stSidebar"] h1 {
-          font-size: 20px;
+          font-size: 18px;
           line-height: 1.25;
+          padding-bottom: 10px;
+          border-bottom: 1px solid var(--pp-border);
         }
 
         .block-container {
-          max-width: 1180px;
-          padding-top: 72px;
+          max-width: 1220px;
+          padding-top: 38px;
+          padding-bottom: 56px;
         }
 
         h1, h2, h3 {
-          color: var(--gh-fg);
+          color: var(--pp-text);
           letter-spacing: 0;
         }
 
+        h1 {
+          font-size: 34px;
+          line-height: 1.1;
+          font-weight: 760;
+          margin-bottom: 18px;
+        }
+
         h2, h3 {
-          border-bottom: 1px solid var(--gh-border);
+          border-bottom: 1px solid var(--pp-border);
           padding-bottom: 8px;
         }
 
+        p, label, span, div {
+          color: inherit;
+        }
+
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stCaptionContainer"],
+        .stCaptionContainer {
+          color: var(--pp-muted);
+        }
+
         [data-testid="stMetric"] {
-          background: var(--gh-canvas-subtle);
-          border: 1px solid var(--gh-border);
-          border-radius: 6px;
-          padding: 12px 14px;
+          background:
+            linear-gradient(135deg, rgba(49, 224, 197, 0.08), transparent 36%),
+            var(--pp-panel);
+          border: 1px solid var(--pp-border);
+          border-radius: 8px;
+          padding: 14px 16px;
+          box-shadow: var(--pp-shadow);
+        }
+
+        [data-testid="stMetricLabel"] {
+          color: var(--pp-muted);
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.02em;
+        }
+
+        [data-testid="stMetricValue"] {
+          color: var(--pp-text);
         }
 
         [data-testid="stExpander"] {
-          border: 1px solid var(--gh-border);
-          border-radius: 6px;
-          background: var(--gh-canvas);
+          border: 1px solid var(--pp-border);
+          border-radius: 8px;
+          background: rgba(29, 34, 48, 0.88);
           box-shadow: none;
         }
 
+        [data-testid="stExpander"] details summary {
+          color: var(--pp-text);
+          font-weight: 650;
+        }
+
         .stTabs [data-baseweb="tab-list"] {
-          gap: 0;
-          border-bottom: 1px solid var(--gh-border);
+          gap: 6px;
+          border-bottom: 1px solid var(--pp-border);
+          background: rgba(15, 17, 23, 0.58);
+          padding: 8px;
+          border-radius: 8px 8px 0 0;
         }
 
         .stTabs [data-baseweb="tab"] {
-          border-radius: 6px 6px 0 0;
-          padding: 10px 14px;
-          color: var(--gh-muted);
+          border-radius: 6px;
+          padding: 10px 15px;
+          color: var(--pp-muted);
+          border: 1px solid transparent;
+          background: transparent;
         }
 
         .stTabs [aria-selected="true"] {
-          color: var(--gh-fg);
-          border: 1px solid var(--gh-border);
-          border-bottom: 2px solid var(--gh-canvas);
-          background: var(--gh-canvas);
+          color: var(--pp-text);
+          border: 1px solid rgba(49, 224, 197, 0.42);
+          background: linear-gradient(135deg, rgba(49, 224, 197, 0.14), rgba(167, 139, 250, 0.11));
+          box-shadow: inset 0 -2px 0 var(--pp-cyan);
         }
 
         .stButton > button {
           border-radius: 6px;
-          border: 1px solid var(--gh-border);
-          background: var(--gh-canvas-subtle);
-          color: var(--gh-fg);
+          border: 1px solid var(--pp-border-strong);
+          background: var(--pp-panel-soft);
+          color: var(--pp-text);
           font-weight: 600;
           box-shadow: none;
+          min-height: 40px;
         }
 
         .stButton > button[kind="primary"] {
-          background: var(--gh-success);
-          border-color: rgba(27, 31, 36, 0.15);
-          color: #ffffff;
+          background: linear-gradient(135deg, var(--pp-cyan), var(--pp-blue));
+          border-color: rgba(49, 224, 197, 0.55);
+          color: #081018;
+          box-shadow: 0 12px 28px rgba(49, 224, 197, 0.18);
+        }
+
+        .stButton > button:hover {
+          border-color: var(--pp-cyan);
+          color: var(--pp-text);
+        }
+
+        .stButton > button[kind="primary"]:hover {
+          color: #081018;
+          filter: brightness(1.06);
         }
 
         .stTextInput input,
         .stTextArea textarea,
-        .stSelectbox div[data-baseweb="select"],
-        .stFileUploader section {
+        .stNumberInput input,
+        .stSelectbox div[data-baseweb="select"] {
           border-radius: 6px;
+          border: 1px solid var(--pp-border);
+          background: var(--pp-field);
+          color: var(--pp-text);
+        }
+
+        .stFileUploader section {
+          border-radius: 8px;
+          border: 1px dashed var(--pp-border-strong);
+          background: rgba(16, 19, 27, 0.74);
+        }
+
+        .stTextInput input:focus,
+        .stTextArea textarea:focus,
+        .stNumberInput input:focus {
+          border-color: var(--pp-cyan);
+          box-shadow: 0 0 0 1px rgba(49, 224, 197, 0.32);
+        }
+
+        .stCheckbox label,
+        .stRadio label,
+        .stSlider label {
+          color: var(--pp-text);
         }
 
         div[data-testid="stDataFrame"] {
-          border: 1px solid var(--gh-border);
-          border-radius: 6px;
+          border: 1px solid var(--pp-border);
+          border-radius: 8px;
           overflow: hidden;
+          box-shadow: var(--pp-shadow);
         }
 
         .stAlert {
-          border-radius: 6px;
-          border: 1px solid var(--gh-border);
+          border-radius: 8px;
+          border: 1px solid var(--pp-border);
+          background: rgba(29, 34, 48, 0.92);
+        }
+
+        [data-testid="stStatusWidget"] {
+          border-radius: 8px;
+          border: 1px solid var(--pp-border);
+          background: rgba(29, 34, 48, 0.94);
+        }
+
+        div[data-baseweb="notification"] {
+          border-radius: 8px;
         }
 
         code {
           border-radius: 6px;
-          color: var(--gh-fg);
-          background: var(--gh-canvas-subtle);
+          color: var(--pp-cyan);
+          background: rgba(49, 224, 197, 0.10);
+          border: 1px solid rgba(49, 224, 197, 0.18);
+        }
+
+        .stProgress > div > div > div > div {
+          background: linear-gradient(90deg, var(--pp-cyan), var(--pp-purple), var(--pp-pink));
+        }
+
+        hr {
+          border-color: var(--pp-border);
+        }
+
+        .pp-workspace-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          margin: 0 0 22px 0;
+          padding: 18px 20px;
+          border: 1px solid var(--pp-border);
+          border-radius: 8px;
+          background:
+            linear-gradient(135deg, rgba(49, 224, 197, 0.13), transparent 32%),
+            linear-gradient(315deg, rgba(255, 111, 174, 0.10), transparent 34%),
+            rgba(29, 34, 48, 0.88);
+          box-shadow: var(--pp-shadow);
+        }
+
+        .pp-kicker {
+          color: var(--pp-cyan);
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .pp-title {
+          color: var(--pp-text);
+          font-size: 24px;
+          font-weight: 780;
+          line-height: 1.2;
+          margin-top: 4px;
+        }
+
+        .pp-token-row {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .pp-token-row span {
+          display: inline-flex;
+          align-items: center;
+          height: 28px;
+          padding: 0 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(49, 224, 197, 0.30);
+          background: rgba(16, 19, 27, 0.74);
+          color: var(--pp-muted);
+          font-size: 12px;
+          font-weight: 650;
+        }
+
+        @media (max-width: 760px) {
+          .pp-workspace-header {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .pp-token-row {
+            justify-content: flex-start;
+          }
         }
         </style>
         """,
@@ -257,6 +440,24 @@ def update_status(status, label: str, state: str = "running") -> None:
         status.write(label)
 
 
+def render_workspace_header(lang: str) -> None:
+    """Render a compact Penpot-inspired workspace header."""
+    st.markdown(
+        f"""
+        <div class="pp-workspace-header">
+          <div>
+            <div class="pp-kicker">Design-code standards workspace</div>
+            <div class="pp-title">{t(lang, "app_title")}</div>
+          </div>
+          <div class="pp-token-row">
+            <span>PDF</span><span>OCR</span><span>JSONL</span><span>Gemini</span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def service_account_email_from_json(raw_json: str | None) -> str:
     """Return client_email from a service account JSON string."""
     if not raw_json:
@@ -318,7 +519,7 @@ def main() -> None:
     load_dotenv()
     ensure_data_dirs()
     st.set_page_config(page_title=t("id", "app_title"), layout="wide")
-    apply_github_theme()
+    apply_penpot_theme()
 
     current_lang = st.session_state.get("lang_code", "id")
     lang = st.sidebar.selectbox(
@@ -329,6 +530,8 @@ def main() -> None:
         key="lang_code",
     )
     language_name = LANGUAGES[lang]
+
+    render_workspace_header(lang)
 
     if not login_disabled_for_local_dev():
         try:
