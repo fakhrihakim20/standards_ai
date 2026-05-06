@@ -695,6 +695,42 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           box-shadow:
             inset 0 -1px 0 {"rgba(15,23,42,0.04)" if not is_night else "rgba(255,255,255,0.04)"};
         }}
+
+        summary,
+        summary *,
+        [data-testid="stExpander"] summary,
+        [data-testid="stExpander"] summary *,
+        [data-baseweb="tab-list"],
+        [data-baseweb="tab-list"] *,
+        button[data-baseweb="tab"],
+        button[data-baseweb="tab"] *,
+        [data-testid="stTab"],
+        [data-testid="stTab"] * {{
+          border: 0 !important;
+          border-bottom: 0 !important;
+          outline: 0 !important;
+          box-shadow: none !important;
+        }}
+
+        [data-baseweb="tab-highlight"] {{
+          display: none !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          border: 0 !important;
+          box-shadow: none !important;
+        }}
+
+        [data-testid="stExpander"] details {{
+          border: 0 !important;
+          outline: 0 !important;
+          box-shadow: none !important;
+        }}
+
+        button[data-baseweb="tab"][aria-selected="true"],
+        button[data-baseweb="tab"][aria-selected="true"] * {{
+          background: {palette["primary"]} !important;
+          color: {palette["primary_text"]} !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
