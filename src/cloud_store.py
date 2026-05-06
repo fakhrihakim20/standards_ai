@@ -144,6 +144,57 @@ def _download_first_existing_text_file(service, folder_id: str, names: tuple[str
     return None, None
 
 
+def _parse_json_cache_file(name: str, text: str, default: Any) -> Any:
+    """Parse a cache JSON file with a file-specific error message."""
+    if not text.strip():
+        return default
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise CloudStoreError(f"{name} is not valid JSON: line {exc.lineno}, column {exc.colno}.") from exc
+
+
+def _parse_chunks_cache_file(name: str, text: str) -> list[dict[str, Any]]:
+    """Parse chunks cache as JSONL, JSON array, or legacy multiline JSONL."""
+    text = text.lstrip("\ufeff")
+    if not text.strip():
+        return []
+    if text.lstrip().startswith("["):
+        rows = _parse_json_cache_file(name, text, [])
+        if not isinstance(rows, list):
+            raise CloudStoreError(f"{name} must contain a JSON array or JSONL rows.")
+        return [row for row in rows if isinstance(row, dict)]
+
+    rows: list[dict[str, Any]] = []
+    buffer = ""
+    start_line = 1
+    last_error: json.JSONDecodeError | None = None
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        if not raw_line.strip() and not buffer:
+            continue
+        if not buffer:
+            start_line = line_number
+        candidate = raw_line if not buffer else f"{buffer}\\n{raw_line}"
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            buffer = candidate
+            last_error = exc
+            continue
+        if isinstance(parsed, dict):
+            rows.append(parsed)
+        buffer = ""
+        start_line = line_number + 1
+        last_error = None
+
+    if buffer:
+        message = "unknown parse error"
+        if last_error:
+            message = f"line {start_line}, column {last_error.colno}: {last_error.msg}"
+        raise CloudStoreError(f"{name} is not valid JSONL. Last incomplete record starts at {message}.")
+    return rows
+
+
 def _cache_folder_candidates(service, root_folder_id: str) -> list[tuple[str, str]]:
     """Return possible cache folders, preferring the nested managed folder."""
     candidates: list[tuple[str, str]] = []
@@ -389,11 +440,12 @@ def load_index_cache(folder_id: str | None = None, service_account_info: Any = N
                 "plus standards_index.json."
                 + detail
             )
-        rows = [json.loads(line) for line in chunks_text.splitlines() if line.strip()]
-        standards = json.loads(standards_text)
+        rows = _parse_chunks_cache_file(chunks_name or "chunks.jsonl", chunks_text)
+        standards = _parse_json_cache_file(standards_name or "standards_index.json", standards_text, [])
+        drive_manifest = _parse_json_cache_file(manifest_name or "drive_manifest.json", drive_manifest_text or "[]", [])
         write_jsonl(CHUNKS_PATH, rows)
         write_json(STANDARDS_INDEX_PATH, standards)
-        write_json(DRIVE_MANIFEST_PATH, json.loads(drive_manifest_text or "[]"))
+        write_json(DRIVE_MANIFEST_PATH, drive_manifest)
         return {
             "chunks": len(rows),
             "standards": len(standards),
