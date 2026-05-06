@@ -88,33 +88,45 @@ def get_drive_service():
         raise GoogleDriveConfigError(str(exc)) from exc
 
 
-def list_drive_pdfs(folder_id: str | None = None) -> list[dict[str, str]]:
-    """List PDF files in the configured Google Drive folder."""
-    folder_id = folder_id or get_drive_folder_id()
+def _list_drive_children(folder_id: str, mime_type: str | None = None) -> list[dict[str, str]]:
+    """List direct children in a Drive folder, optionally filtered by MIME type."""
     service = get_drive_service()
-    query = (
-        f"'{folder_id}' in parents and trashed = false and "
-        "mimeType = 'application/pdf'"
-    )
-    try:
-        files: list[dict[str, str]] = []
-        page_token = None
-        while True:
-            response = (
-                service.files()
-                .list(
-                    q=query,
-                    spaces="drive",
-                    fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
-                    pageToken=page_token,
-                    orderBy="name",
-                )
-                .execute()
+    mime_clause = f" and mimeType = '{mime_type}'" if mime_type else ""
+    query = f"'{folder_id}' in parents and trashed = false{mime_clause}"
+    files: list[dict[str, str]] = []
+    page_token = None
+    while True:
+        response = (
+            service.files()
+            .list(
+                q=query,
+                spaces="drive",
+                fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
+                pageToken=page_token,
+                orderBy="name",
             )
-            files.extend(response.get("files", []))
-            page_token = response.get("nextPageToken")
-            if not page_token:
-                break
+            .execute()
+        )
+        files.extend(response.get("files", []))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+    return files
+
+
+def list_drive_pdfs(folder_id: str | None = None, recursive: bool = True) -> list[dict[str, str]]:
+    """List PDF files in the configured Google Drive folder.
+
+    Recursive listing helps when a standards library is grouped into IEC/IEEE/SPLN
+    subfolders.
+    """
+    folder_id = folder_id or get_drive_folder_id()
+    try:
+        files = _list_drive_children(folder_id, "application/pdf")
+        if recursive:
+            folders = _list_drive_children(folder_id, "application/vnd.google-apps.folder")
+            for folder in folders:
+                files.extend(list_drive_pdfs(folder["id"], recursive=True))
         return files
     except Exception as exc:
         raise GoogleDriveSyncError(str(exc)) from exc
