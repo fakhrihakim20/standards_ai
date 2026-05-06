@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,7 @@ from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaIoBaseUpload
 
 from .drive_storage import (
     GoogleDriveConfigError,
@@ -147,14 +149,30 @@ def diagnose_index_cache_folder(folder_id: str | None = None, service_account_in
         }
         if write_test:
             test_name = ".standards_ai_write_test.txt"
-            test_id = upload_text_file(service, root_folder_id, test_name, "ok", mime_type="text/plain")
-            result["write_test"] = "ok"
-            result["write_test_file_id"] = test_id
             try:
-                service.files().delete(fileId=test_id, supportsAllDrives=True).execute()
-                result["delete_test"] = "ok"
+                media = MediaIoBaseUpload(io.BytesIO(b"ok"), mimetype="text/plain", resumable=False)
+                created = (
+                    service.files()
+                    .create(
+                        body={"name": test_name, "parents": [root_folder_id], "mimeType": "text/plain"},
+                        media_body=media,
+                        fields="id",
+                        supportsAllDrives=True,
+                    )
+                    .execute()
+                )
+                test_id = created["id"]
+                result["write_test"] = "ok"
+                result["write_test_file_id"] = test_id
+                try:
+                    service.files().delete(fileId=test_id, supportsAllDrives=True).execute()
+                    result["delete_test"] = "ok"
+                except HttpError as exc:
+                    result["delete_test"] = f"failed: {exc}"
             except HttpError as exc:
-                result["delete_test"] = f"failed: {exc}"
+                result["write_test"] = "failed"
+                result["write_error_status"] = exc.resp.status
+                result["write_error_reason"] = str(exc)
         return result
     except HttpError as exc:
         raise _drive_permission_help(exc, root_folder_id) from exc

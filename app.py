@@ -486,6 +486,8 @@ def main() -> None:
                     st.warning(t(lang, "cache_folder_no_write"))
                 elif diagnostic.get("write_test") == "ok":
                     st.success(t(lang, "cache_folder_write_ok"))
+                elif diagnostic.get("write_test") == "failed":
+                    st.warning(t(lang, "cache_folder_write_failed"))
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         cache_col1, cache_col2 = st.columns(2)
