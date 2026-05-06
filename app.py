@@ -105,7 +105,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
         }
 
         h2, h3 {
-          border-bottom: 1px solid var(--pp-border);
+          border-bottom: 0;
           padding-bottom: 8px;
         }
 
@@ -154,7 +154,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
 
         .stTabs [data-baseweb="tab-list"] {
           gap: 6px;
-          border-bottom: 1px solid var(--pp-border);
+          border-bottom: 0;
           background: rgba(15, 17, 23, 0.58);
           padding: 8px;
           border-radius: 8px 8px 0 0;
@@ -266,7 +266,7 @@ def apply_material_you_theme(theme_mode: str) -> None:
         }
 
         hr {
-          border-color: var(--pp-border);
+          border-color: transparent;
         }
 
         .pp-workspace-header {
@@ -516,7 +516,12 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         }}
 
         .stApp {{
-          background: {palette["wallpaper"]} !important;
+          background: {palette["bg"]} !important;
+        }}
+
+        h2, h3,
+        [data-testid="stSidebar"] h1 {{
+          border-bottom: 0 !important;
         }}
 
         [data-testid="stSidebar"] {{
@@ -560,12 +565,15 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
 
         .stTabs [data-baseweb="tab-list"] {{
           border-radius: 999px !important;
-          background: {palette["surface_soft"]} !important;
-          border: 1px solid {palette["border"]};
+          background: {palette["surface"]} !important;
+          border: 0 !important;
+          box-shadow: {palette["shadow"]};
         }}
 
         .stTabs [data-baseweb="tab"] {{
           border-radius: 999px !important;
+          color: {palette["muted"]} !important;
+          font-weight: 650 !important;
         }}
 
         .stTabs [aria-selected="true"] {{
@@ -577,6 +585,22 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
 
         .pp-kicker {{
           color: {palette["primary"]} !important;
+        }}
+
+        .pp-workspace-header {{
+          background: {palette["surface"]} !important;
+        }}
+
+        .stTabs [aria-selected="true"] {{
+          border: 0 !important;
+        }}
+
+        [data-testid="stMetric"],
+        [data-testid="stExpander"],
+        [data-testid="stStatusWidget"],
+        .stAlert,
+        div[data-testid="stDataFrame"] {{
+          border: 0 !important;
         }}
 
         .stAlert {{
@@ -618,12 +642,10 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         .stTabs [data-baseweb="tab-list"] {{
           position: relative;
           overflow: hidden;
-          backdrop-filter: blur(22px) saturate(145%);
-          -webkit-backdrop-filter: blur(22px) saturate(145%);
-          border: 1px solid {"rgba(255,255,255,0.56)" if not is_night else "rgba(255,255,255,0.14)"} !important;
+          backdrop-filter: blur(10px) saturate(112%);
+          -webkit-backdrop-filter: blur(10px) saturate(112%);
+          border: 0 !important;
           box-shadow:
-            inset 0 1px 0 {"rgba(255,255,255,0.74)" if not is_night else "rgba(255,255,255,0.18)"},
-            inset 0 -1px 0 {"rgba(15,23,42,0.08)" if not is_night else "rgba(255,255,255,0.05)"},
             {palette["shadow"]};
         }}
 
@@ -632,7 +654,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         [data-testid="stStatusWidget"]::before,
         .pp-workspace-header::before,
         .stTabs [data-baseweb="tab-list"]::before {{
-          content: "";
+          content: none;
           position: absolute;
           inset: 0;
           pointer-events: none;
@@ -647,7 +669,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
 
         [data-testid="stMetric"]::after,
         .pp-workspace-header::after {{
-          content: "";
+          content: none;
           position: absolute;
           pointer-events: none;
           inset: 1px;
@@ -663,7 +685,6 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           backdrop-filter: blur(14px) saturate(135%);
           -webkit-backdrop-filter: blur(14px) saturate(135%);
           box-shadow:
-            inset 0 1px 0 {"rgba(255,255,255,0.58)" if not is_night else "rgba(255,255,255,0.12)"},
             0 8px 22px {"rgba(15,23,42,0.08)" if not is_night else "rgba(0,0,0,0.28)"};
         }}
 
@@ -672,7 +693,6 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         .stNumberInput input,
         .stSelectbox div[data-baseweb="select"] {{
           box-shadow:
-            inset 0 1px 0 {"rgba(255,255,255,0.72)" if not is_night else "rgba(255,255,255,0.06)"},
             inset 0 -1px 0 {"rgba(15,23,42,0.04)" if not is_night else "rgba(255,255,255,0.04)"};
         }}
         </style>
