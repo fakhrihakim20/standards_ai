@@ -32,8 +32,8 @@ from src.search import search_chunks
 from src.utils import BODIES, CHUNKS_PATH, DRIVE_MANIFEST_PATH, PDF_DIR, STANDARDS_INDEX_PATH, ensure_data_dirs, read_json, read_jsonl, write_json
 
 
-def apply_penpot_theme() -> None:
-    """Apply a Penpot-inspired dark workspace visual theme to Streamlit."""
+def apply_material_you_theme(theme_mode: str) -> None:
+    """Apply a Material You New Tab inspired day/night visual theme."""
     st.markdown(
         """
         <style>
@@ -440,19 +440,145 @@ def update_status(status, label: str, state: str = "running") -> None:
         status.write(label)
 
 
-def render_workspace_header(lang: str) -> None:
-    """Render a compact Penpot-inspired workspace header."""
+def render_workspace_header(lang: str, theme_mode: str) -> None:
+    """Render a compact Material You inspired workspace header."""
     st.markdown(
         f"""
         <div class="pp-workspace-header">
           <div>
-            <div class="pp-kicker">Design-code standards workspace</div>
+            <div class="pp-kicker">Material You standards home</div>
             <div class="pp-title">{t(lang, "app_title")}</div>
           </div>
           <div class="pp-token-row">
             <span>PDF</span><span>OCR</span><span>JSONL</span><span>Gemini</span>
           </div>
         </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    is_night = theme_mode == "night"
+    if is_night:
+        wallpaper = (
+            "radial-gradient(circle at 18% 10%, rgba(208, 188, 255, 0.18), transparent 30%),"
+            "radial-gradient(circle at 82% 8%, rgba(239, 184, 200, 0.16), transparent 28%),"
+            "linear-gradient(180deg, #101318 0%, #16151d 100%)"
+        )
+    else:
+        wallpaper = (
+            "radial-gradient(circle at 18% 8%, rgba(103, 80, 164, 0.16), transparent 30%),"
+            "radial-gradient(circle at 84% 10%, rgba(125, 82, 96, 0.13), transparent 28%),"
+            "linear-gradient(180deg, #f7f2fa 0%, #fff8ff 100%)"
+        )
+    palette = {
+        "bg": "#101318" if is_night else "#f7f2fa",
+        "surface": "#1b1b20" if is_night else "#fffbfe",
+        "surface_soft": "#23242a" if is_night else "#f1eaf4",
+        "field": "#121318" if is_night else "#fef7ff",
+        "border": "#49454f" if is_night else "#e7dfe9",
+        "text": "#e6e1e5" if is_night else "#1d1b20",
+        "muted": "#cac4d0" if is_night else "#675f6b",
+        "primary": "#d0bcff" if is_night else "#6750a4",
+        "primary_text": "#381e72" if is_night else "#ffffff",
+        "secondary": "#ccc2dc" if is_night else "#625b71",
+        "tertiary": "#efb8c8" if is_night else "#7d5260",
+        "success": "#b7f7d0" if is_night else "#146c43",
+        "shadow": "0 18px 44px rgba(0, 0, 0, 0.34)" if is_night else "0 18px 44px rgba(103, 80, 164, 0.14)",
+        "wallpaper": wallpaper,
+    }
+    st.markdown(
+        f"""
+        <style>
+        :root {{
+          --pp-bg: {palette["bg"]};
+          --pp-canvas: {palette["surface"]};
+          --pp-panel: {palette["surface"]};
+          --pp-panel-soft: {palette["surface_soft"]};
+          --pp-field: {palette["field"]};
+          --pp-border: {palette["border"]};
+          --pp-border-strong: {palette["border"]};
+          --pp-text: {palette["text"]};
+          --pp-muted: {palette["muted"]};
+          --pp-faint: {palette["muted"]};
+          --pp-cyan: {palette["primary"]};
+          --pp-blue: {palette["primary"]};
+          --pp-purple: {palette["secondary"]};
+          --pp-pink: {palette["tertiary"]};
+          --pp-yellow: #ffd8a8;
+          --pp-red: #ffb4ab;
+          --pp-green: {palette["success"]};
+          --pp-shadow: {palette["shadow"]};
+        }}
+
+        .stApp {{
+          background: {palette["wallpaper"]} !important;
+        }}
+
+        [data-testid="stSidebar"] {{
+          background: {palette["surface"]} !important;
+          border-right: 1px solid {palette["border"]};
+        }}
+
+        [data-testid="stMetric"],
+        [data-testid="stExpander"],
+        [data-testid="stStatusWidget"],
+        .pp-workspace-header {{
+          border-radius: 28px !important;
+          background: {palette["surface"]} !important;
+          box-shadow: {palette["shadow"]};
+        }}
+
+        .stButton > button {{
+          border-radius: 999px !important;
+          background: {palette["surface_soft"]};
+          border-color: {palette["border"]};
+          color: {palette["text"]};
+        }}
+
+        .stButton > button[kind="primary"] {{
+          background: {palette["primary"]} !important;
+          color: {palette["primary_text"]} !important;
+          border-color: transparent !important;
+        }}
+
+        .stTextInput input,
+        .stTextArea textarea,
+        .stNumberInput input,
+        .stSelectbox div[data-baseweb="select"],
+        .stFileUploader section {{
+          border-radius: 18px !important;
+          background: {palette["field"]} !important;
+          color: {palette["text"]} !important;
+          border-color: {palette["border"]} !important;
+        }}
+
+        .stTabs [data-baseweb="tab-list"] {{
+          border-radius: 999px !important;
+          background: {palette["surface_soft"]} !important;
+          border: 1px solid {palette["border"]};
+        }}
+
+        .stTabs [data-baseweb="tab"] {{
+          border-radius: 999px !important;
+        }}
+
+        .stTabs [aria-selected="true"] {{
+          background: {palette["primary"]} !important;
+          color: {palette["primary_text"]} !important;
+          box-shadow: none !important;
+          border-color: transparent !important;
+        }}
+
+        .pp-kicker {{
+          color: {palette["primary"]} !important;
+        }}
+
+        .pp-token-row span {{
+          border-radius: 999px;
+          background: {palette["surface_soft"]};
+          border-color: {palette["border"]};
+          color: {palette["muted"]};
+        }}
+        </style>
         """,
         unsafe_allow_html=True,
     )
@@ -519,7 +645,8 @@ def main() -> None:
     load_dotenv()
     ensure_data_dirs()
     st.set_page_config(page_title=t("id", "app_title"), layout="wide")
-    apply_penpot_theme()
+    theme_mode = st.session_state.get("theme_mode", "day")
+    apply_material_you_theme(theme_mode)
 
     current_lang = st.session_state.get("lang_code", "id")
     lang = st.sidebar.selectbox(
@@ -530,8 +657,16 @@ def main() -> None:
         key="lang_code",
     )
     language_name = LANGUAGES[lang]
+    theme_mode = st.sidebar.radio(
+        t(lang, "appearance_mode"),
+        options=["day", "night"],
+        index=["day", "night"].index(theme_mode) if theme_mode in {"day", "night"} else 0,
+        format_func=lambda mode: t(lang, f"{mode}_mode"),
+        horizontal=True,
+        key="theme_mode",
+    )
 
-    render_workspace_header(lang)
+    render_workspace_header(lang, theme_mode)
 
     if not login_disabled_for_local_dev():
         try:
