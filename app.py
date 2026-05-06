@@ -486,6 +486,8 @@ def main() -> None:
                     st.warning(t(lang, "cache_folder_no_write"))
                 elif diagnostic.get("write_test") == "ok":
                     st.success(t(lang, "cache_folder_write_ok"))
+                elif diagnostic.get("existing_file_update_test") == "ok":
+                    st.success(t(lang, "cache_folder_update_ok"))
                 elif diagnostic.get("write_test") == "failed":
                     st.warning(t(lang, "cache_folder_write_failed"))
             except CloudStoreError as exc:

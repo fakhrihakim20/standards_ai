@@ -181,6 +181,23 @@ def diagnose_index_cache_folder(folder_id: str | None = None, service_account_in
                 result["write_test"] = "failed"
                 result["write_error_status"] = exc.resp.status
                 result["write_error_reason"] = str(exc)
+                existing_manifest = download_text_file(service, root_folder_id, "drive_manifest.json")
+                if existing_manifest is None:
+                    result["existing_file_update_test"] = "skipped: drive_manifest.json not found"
+                else:
+                    try:
+                        upload_text_file(
+                            service,
+                            root_folder_id,
+                            "drive_manifest.json",
+                            existing_manifest,
+                            mime_type="application/json",
+                        )
+                        result["existing_file_update_test"] = "ok"
+                    except HttpError as update_exc:
+                        result["existing_file_update_test"] = "failed"
+                        result["existing_file_update_error_status"] = update_exc.resp.status
+                        result["existing_file_update_error_reason"] = str(update_exc)
         return result
     except HttpError as exc:
         raise _drive_permission_help(exc, root_folder_id) from exc
