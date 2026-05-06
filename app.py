@@ -426,20 +426,39 @@ def main() -> None:
         else:
             drive_col2.metric(t(lang, "drive_pdfs_found"), "-")
 
+        standards = read_json(STANDARDS_INDEX_PATH, [])
+        chunks = read_jsonl(CHUNKS_PATH)
+        standards_by_file = {
+            item.get("source_file"): item
+            for item in standards
+            if isinstance(item, dict) and item.get("source_file")
+        }
         pdfs = list_pdfs()
         st.metric(t(lang, "pdfs_found"), len(pdfs))
         if pdfs:
-            st.dataframe(pd.DataFrame({"PDF": [p.name for p in pdfs]}), use_container_width=True)
+            pdf_status_rows = []
+            for pdf_path in pdfs:
+                source_file = str(pdf_path.relative_to(PDF_DIR)).replace("\\", "/")
+                indexed = standards_by_file.get(source_file, {})
+                pdf_status_rows.append(
+                    {
+                        "PDF": source_file,
+                        t(lang, "index_marker"): t(lang, "indexed_marker") if indexed else t(lang, "not_indexed_marker"),
+                        t(lang, "chunks_created"): indexed.get("chunk_count", 0),
+                        t(lang, "cache_marker"): indexed.get("index_status", ""),
+                    }
+                )
+            st.dataframe(pd.DataFrame(pdf_status_rows), use_container_width=True)
         else:
             st.warning(t(lang, "no_pdfs"))
 
-        standards = read_json(STANDARDS_INDEX_PATH, [])
-        chunks = read_jsonl(CHUNKS_PATH)
         st.subheader(t(lang, "index_status"))
         st.write(t(lang, "index_exists") if CHUNKS_PATH.exists() else t(lang, "no_index"))
         col1, col2 = st.columns(2)
         col1.metric(t(lang, "standards_indexed"), len(standards))
         col2.metric(t(lang, "chunks_created"), len(chunks))
+        if st.session_state.get("last_cache_action"):
+            st.info(st.session_state["last_cache_action"])
         st.caption(t(lang, "index_cache_help"))
         cache_col1, cache_col2 = st.columns(2)
         if cache_col1.button(t(lang, "load_index_cache")):
@@ -448,6 +467,7 @@ def main() -> None:
                     folder_id=drive_folder_input or None,
                     service_account_info=get_session_drive_json(),
                 )
+                st.session_state["last_cache_action"] = t(lang, "cache_loaded_marker")
                 st.success(f"{t(lang, 'index_cache_loaded')} {t(lang, 'standards_indexed')}: {cache_result['standards']} | {t(lang, 'chunks_created')}: {cache_result['chunks']}")
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
@@ -457,16 +477,37 @@ def main() -> None:
                     folder_id=drive_folder_input or None,
                     service_account_info=get_session_drive_json(),
                 )
+                st.session_state["last_cache_action"] = t(lang, "cache_saved_marker")
                 st.success(f"{t(lang, 'index_cache_saved')} {t(lang, 'standards_indexed')}: {cache_result['standards']} | {t(lang, 'chunks_created')}: {cache_result['chunks']}")
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         use_ocr = st.checkbox(t(lang, "use_ocr"), value=True, help=t(lang, "ocr_help"))
         ocr_language = st.selectbox(t(lang, "ocr_language"), ["eng+ind", "eng", "ind"], index=0)
+        force_rebuild = st.checkbox(t(lang, "force_rebuild"), value=False, help=t(lang, "force_rebuild_help"))
 
         if st.button(t(lang, "rebuild_index"), type="primary"):
-            with st.spinner(t(lang, "rebuild_index")):
-                result = build_index(use_ocr=use_ocr, ocr_language=ocr_language)
-            st.success(f"{t(lang, 'standards_indexed')}: {result['standards']} | {t(lang, 'chunks_created')}: {result['chunks']}")
+            progress_bar = st.progress(0)
+            progress_text = st.empty()
+
+            def update_index_progress(current: int, total: int, source_file: str, action: str) -> None:
+                progress_bar.progress(current / max(total, 1))
+                action_label = t(lang, "index_skipping") if action == "skip" else t(lang, "index_processing")
+                progress_text.write(f"{action_label} {current}/{total}: `{source_file}`")
+
+            result = build_index(
+                use_ocr=use_ocr,
+                ocr_language=ocr_language,
+                force_rebuild=force_rebuild,
+                progress_callback=update_index_progress,
+            )
+            progress_bar.progress(1.0)
+            progress_text.write(t(lang, "index_done"))
+            st.success(
+                f"{t(lang, 'standards_indexed')}: {result['standards']} | "
+                f"{t(lang, 'chunks_created')}: {result['chunks']} | "
+                f"{t(lang, 'rebuilt_files')}: {result.get('rebuilt', 0)} | "
+                f"{t(lang, 'skipped_files')}: {result.get('skipped', 0)}"
+            )
             if result["warnings"]:
                 st.warning(t(lang, "warnings"))
                 for warning in result["warnings"]:
