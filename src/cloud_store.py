@@ -113,8 +113,9 @@ def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
         return CloudStoreError(
             "Google Drive cache folder is not accessible by the service account. "
             f"Share the Drive folder `{folder_id}` with the service account email as Editor, "
-            "then try again. If the folder is in a Shared Drive, make sure the service account "
-            "is a member of that Shared Drive."
+            "or paste that shared folder link into the OCR/index cache folder field. "
+            "If the folder is in a Shared Drive, make sure the service account is a member "
+            "of that Shared Drive."
         )
     return CloudStoreError(str(exc))
 

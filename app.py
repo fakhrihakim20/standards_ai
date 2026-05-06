@@ -463,11 +463,20 @@ def main() -> None:
         if active_service_account_email:
             st.caption(f"{t(lang, 'active_service_account')}: `{active_service_account_email}`")
         st.caption(t(lang, "index_cache_help"))
+        cache_folder_input = st.text_input(
+            t(lang, "index_cache_folder"),
+            value=st.session_state.get("index_cache_folder_input", ""),
+            key="index_cache_folder_input",
+            help=t(lang, "index_cache_folder_help"),
+        )
+        cache_folder_id = cache_folder_input or drive_folder_input or None
+        if cache_folder_id:
+            st.caption(f"{t(lang, 'cache_folder_target')}: `{cache_folder_id}`")
         cache_col1, cache_col2 = st.columns(2)
         if cache_col1.button(t(lang, "load_index_cache")):
             try:
                 cache_result = load_index_cache(
-                    folder_id=drive_folder_input or None,
+                    folder_id=cache_folder_id,
                     service_account_info=get_session_drive_json(),
                 )
                 st.session_state["last_cache_action"] = t(lang, "cache_loaded_marker")
@@ -482,7 +491,7 @@ def main() -> None:
         if cache_col2.button(t(lang, "save_index_cache")):
             try:
                 cache_result = save_index_cache(
-                    folder_id=drive_folder_input or None,
+                    folder_id=cache_folder_id,
                     service_account_info=get_session_drive_json(),
                 )
                 st.session_state["last_cache_action"] = t(lang, "cache_saved_marker")
