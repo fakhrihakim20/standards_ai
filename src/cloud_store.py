@@ -25,6 +25,7 @@ from .utils import CHUNKS_PATH, DRIVE_MANIFEST_PATH, STANDARDS_INDEX_PATH, read_
 CACHE_FOLDER_NAME = ".standards_ai_cache"
 USER_SETTINGS_FOLDER_NAME = "user_settings"
 INDEX_CACHE_FOLDER_NAME = "index_cache"
+INDEX_CACHE_FILES = ("chunks.jsonl", "standards_index.json", "drive_manifest.json")
 
 
 class CloudStoreError(RuntimeError):
@@ -90,6 +91,8 @@ def _find_index_folder(service, root_folder_id: str) -> str | None:
 
 def _index_folder_for_save(service, root_folder_id: str) -> tuple[str, str]:
     """Return a folder id for saving index cache, falling back to the selected root."""
+    if all(find_child(service, root_folder_id, name) for name in INDEX_CACHE_FILES):
+        return root_folder_id, "root"
     try:
         return _index_folder(service, root_folder_id), "nested"
     except HttpError as exc:
@@ -250,6 +253,13 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
         index_folder, cache_location = _index_folder_for_save(service, root_folder_id)
+        missing_files = [name for name in INDEX_CACHE_FILES if not find_child(service, index_folder, name)]
+        if cache_location == "root" and missing_files:
+            raise CloudStoreError(
+                "The selected cache folder is a regular My Drive folder. Service accounts cannot "
+                "create new files there. Create these files first, then retry: "
+                + ", ".join(missing_files)
+            )
         chunks_text = CHUNKS_PATH.read_text(encoding="utf-8") if CHUNKS_PATH.exists() else ""
         standards_text = STANDARDS_INDEX_PATH.read_text(encoding="utf-8") if STANDARDS_INDEX_PATH.exists() else "[]"
         drive_manifest_text = DRIVE_MANIFEST_PATH.read_text(encoding="utf-8") if DRIVE_MANIFEST_PATH.exists() else "[]"
