@@ -26,6 +26,14 @@ CACHE_FOLDER_NAME = ".standards_ai_cache"
 USER_SETTINGS_FOLDER_NAME = "user_settings"
 INDEX_CACHE_FOLDER_NAME = "index_cache"
 INDEX_CACHE_FILES = ("chunks.jsonl", "standards_index.json", "drive_manifest.json")
+CHUNKS_CACHE_NAMES = ("chunks.jsonl", "chunk.jsonl")
+STANDARDS_CACHE_NAMES = ("standards_index.json", "standard_index.json", "standards.json")
+DRIVE_MANIFEST_CACHE_NAMES = ("drive_manifest.json", "manifest.json")
+INDEX_CACHE_NAME_GROUPS = {
+    "chunks": CHUNKS_CACHE_NAMES,
+    "standards": STANDARDS_CACHE_NAMES,
+    "drive_manifest": DRIVE_MANIFEST_CACHE_NAMES,
+}
 
 
 class CloudStoreError(RuntimeError):
@@ -89,9 +97,70 @@ def _find_index_folder(service, root_folder_id: str) -> str | None:
     return index_folder["id"] if index_folder else None
 
 
+def _list_cache_file_names(service, folder_id: str) -> list[str]:
+    """List direct file names in a cache folder for diagnostics and detection."""
+    files: list[str] = []
+    page_token = None
+    while True:
+        response = (
+            service.files()
+            .list(
+                q=f"'{folder_id}' in parents and trashed = false",
+                spaces="drive",
+                fields="nextPageToken, files(name, mimeType)",
+                pageToken=page_token,
+                orderBy="name",
+                pageSize=1000,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+        files.extend(str(item.get("name", "")) for item in response.get("files", []) if item.get("name"))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            return files
+
+
+def _find_existing_cache_name(service, folder_id: str, names: tuple[str, ...]) -> str | None:
+    """Return the first matching cache filename from a canonical/legacy name list."""
+    for name in names:
+        if find_child(service, folder_id, name):
+            return name
+    return None
+
+
+def _has_cache_group(service, folder_id: str, names: tuple[str, ...]) -> bool:
+    return _find_existing_cache_name(service, folder_id, names) is not None
+
+
+def _download_first_existing_text_file(service, folder_id: str, names: tuple[str, ...]) -> tuple[str | None, str | None]:
+    """Download the first available cache file from a canonical/legacy name list."""
+    for name in names:
+        text = download_text_file(service, folder_id, name)
+        if text is not None:
+            return name, text
+    return None, None
+
+
+def _cache_folder_candidates(service, root_folder_id: str) -> list[tuple[str, str]]:
+    """Return possible cache folders, preferring the nested managed folder."""
+    candidates: list[tuple[str, str]] = []
+    try:
+        index_folder = _find_index_folder(service, root_folder_id)
+    except HttpError as exc:
+        if exc.resp.status not in {403, 404}:
+            raise
+        index_folder = None
+    if index_folder:
+        candidates.append((index_folder, "nested"))
+    candidates.append((root_folder_id, "root"))
+    return candidates
+
+
 def _index_folder_for_save(service, root_folder_id: str) -> tuple[str, str]:
     """Return a folder id for saving index cache, falling back to the selected root."""
-    if all(find_child(service, root_folder_id, name) for name in INDEX_CACHE_FILES):
+    if all(_has_cache_group(service, root_folder_id, names) for names in INDEX_CACHE_NAME_GROUPS.values()):
         return root_folder_id, "root"
     try:
         return _index_folder(service, root_folder_id), "nested"
@@ -103,13 +172,26 @@ def _index_folder_for_save(service, root_folder_id: str) -> tuple[str, str]:
 
 def _index_folder_for_load(service, root_folder_id: str) -> tuple[str, str]:
     """Return a folder id for loading index cache without requiring create permission."""
-    try:
-        index_folder = _find_index_folder(service, root_folder_id)
-    except HttpError as exc:
-        if exc.resp.status not in {403, 404}:
-            raise
-        index_folder = None
-    return (index_folder, "nested") if index_folder else (root_folder_id, "root")
+    for folder_id, cache_location in _cache_folder_candidates(service, root_folder_id):
+        has_chunks = _has_cache_group(service, folder_id, CHUNKS_CACHE_NAMES)
+        has_standards = _has_cache_group(service, folder_id, STANDARDS_CACHE_NAMES)
+        if has_chunks and has_standards:
+            return folder_id, cache_location
+    return _cache_folder_candidates(service, root_folder_id)[0]
+
+
+def _target_cache_name(service, folder_id: str, names: tuple[str, ...]) -> str:
+    """Use an existing legacy filename if present, otherwise the canonical first name."""
+    return _find_existing_cache_name(service, folder_id, names) or names[0]
+
+
+def _missing_cache_groups_for_folder(service, folder_id: str) -> list[str]:
+    """Return canonical filenames for cache groups with no matching file or alias."""
+    missing: list[str] = []
+    for names in INDEX_CACHE_NAME_GROUPS.values():
+        if not _has_cache_group(service, folder_id, names):
+            missing.append(names[0])
+    return missing
 
 
 def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
@@ -246,14 +328,14 @@ def load_user_settings(email: str, folder_id: str | None = None, service_account
         raise CloudStoreError(str(exc)) from exc
 
 
-def save_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, int]:
+def save_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, Any]:
     """Save local OCR/search index files to Google Drive as a lightweight cloud database."""
     root_folder_id = ""
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
         index_folder, cache_location = _index_folder_for_save(service, root_folder_id)
-        missing_files = [name for name in INDEX_CACHE_FILES if not find_child(service, index_folder, name)]
+        missing_files = _missing_cache_groups_for_folder(service, index_folder)
         if cache_location == "root" and missing_files:
             raise CloudStoreError(
                 "The selected cache folder is a regular My Drive folder. Service accounts cannot "
@@ -263,34 +345,57 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
         chunks_text = CHUNKS_PATH.read_text(encoding="utf-8") if CHUNKS_PATH.exists() else ""
         standards_text = STANDARDS_INDEX_PATH.read_text(encoding="utf-8") if STANDARDS_INDEX_PATH.exists() else "[]"
         drive_manifest_text = DRIVE_MANIFEST_PATH.read_text(encoding="utf-8") if DRIVE_MANIFEST_PATH.exists() else "[]"
-        upload_text_file(service, index_folder, "chunks.jsonl", chunks_text, mime_type="application/jsonl")
-        upload_text_file(service, index_folder, "standards_index.json", standards_text, mime_type="application/json")
-        upload_text_file(service, index_folder, "drive_manifest.json", drive_manifest_text, mime_type="application/json")
-        return {"chunks": len(read_jsonl(CHUNKS_PATH)), "standards": len(json.loads(standards_text)), "cache_location": cache_location}
+        chunks_name = _target_cache_name(service, index_folder, CHUNKS_CACHE_NAMES)
+        standards_name = _target_cache_name(service, index_folder, STANDARDS_CACHE_NAMES)
+        manifest_name = _target_cache_name(service, index_folder, DRIVE_MANIFEST_CACHE_NAMES)
+        upload_text_file(service, index_folder, chunks_name, chunks_text, mime_type="application/jsonl")
+        upload_text_file(service, index_folder, standards_name, standards_text, mime_type="application/json")
+        upload_text_file(service, index_folder, manifest_name, drive_manifest_text, mime_type="application/json")
+        return {
+            "chunks": len(read_jsonl(CHUNKS_PATH)),
+            "standards": len(json.loads(standards_text)),
+            "cache_location": cache_location,
+            "cache_files": [chunks_name, standards_name, manifest_name],
+        }
     except HttpError as exc:
         raise _drive_permission_help(exc, root_folder_id) from exc
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
 
 
-def load_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, int]:
+def load_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, Any]:
     """Load cached OCR/search index files from Google Drive into local JSONL/JSON."""
     root_folder_id = ""
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
         index_folder, cache_location = _index_folder_for_load(service, root_folder_id)
-        chunks_text = download_text_file(service, index_folder, "chunks.jsonl")
-        standards_text = download_text_file(service, index_folder, "standards_index.json")
-        drive_manifest_text = download_text_file(service, index_folder, "drive_manifest.json")
+        chunks_name, chunks_text = _download_first_existing_text_file(service, index_folder, CHUNKS_CACHE_NAMES)
+        standards_name, standards_text = _download_first_existing_text_file(service, index_folder, STANDARDS_CACHE_NAMES)
+        manifest_name, drive_manifest_text = _download_first_existing_text_file(service, index_folder, DRIVE_MANIFEST_CACHE_NAMES)
         if chunks_text is None or standards_text is None:
-            raise CloudStoreError("No saved index cache found in Google Drive.")
+            discovered: list[str] = []
+            for candidate_folder, candidate_location in _cache_folder_candidates(service, root_folder_id):
+                names = _list_cache_file_names(service, candidate_folder)
+                if names:
+                    discovered.append(f"{candidate_location}: {', '.join(names)}")
+            detail = f" Detected files: {' | '.join(discovered)}." if discovered else ""
+            raise CloudStoreError(
+                "No saved index cache found in Google Drive. Expected chunks.jsonl or chunk.jsonl, "
+                "plus standards_index.json."
+                + detail
+            )
         rows = [json.loads(line) for line in chunks_text.splitlines() if line.strip()]
         standards = json.loads(standards_text)
         write_jsonl(CHUNKS_PATH, rows)
         write_json(STANDARDS_INDEX_PATH, standards)
         write_json(DRIVE_MANIFEST_PATH, json.loads(drive_manifest_text or "[]"))
-        return {"chunks": len(rows), "standards": len(standards), "cache_location": cache_location}
+        return {
+            "chunks": len(rows),
+            "standards": len(standards),
+            "cache_location": cache_location,
+            "cache_files": [name for name in (chunks_name, standards_name, manifest_name) if name],
+        }
     except CloudStoreError:
         raise
     except HttpError as exc:

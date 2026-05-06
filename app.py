@@ -1057,6 +1057,8 @@ def main() -> None:
                     f"{t(lang, 'chunks_created')}: {cache_result['chunks']} | "
                     f"{t(lang, 'cache_location')}: {cache_result.get('cache_location', '-')}"
                 )
+                if cache_result.get("cache_files"):
+                    st.caption(f"{t(lang, 'cache_files_found')}: {', '.join(cache_result['cache_files'])}")
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         if cache_col2.button(t(lang, "save_index_cache")):
@@ -1072,6 +1074,8 @@ def main() -> None:
                     f"{t(lang, 'chunks_created')}: {cache_result['chunks']} | "
                     f"{t(lang, 'cache_location')}: {cache_result.get('cache_location', '-')}"
                 )
+                if cache_result.get("cache_files"):
+                    st.caption(f"{t(lang, 'cache_files_found')}: {', '.join(cache_result['cache_files'])}")
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         use_ocr = st.checkbox(t(lang, "use_ocr"), value=True, help=t(lang, "ocr_help"))
