@@ -68,6 +68,7 @@ GEMINI_MODEL=gemini-2.5-flash
 GOOGLE_DRIVE_FOLDER_ID=your_google_drive_folder_id_here
 GOOGLE_SERVICE_ACCOUNT_FILE=path/to/service-account.json
 APP_ENCRYPTION_KEY=generate_with_python_cryptography_fernet_key
+DISABLE_LOGIN=false
 ```
 
 Generate an encryption key for saved per-user defaults:
@@ -96,6 +97,7 @@ GEMINI_API_KEY = "your_gemini_api_key_here"
 GEMINI_MODEL = "gemini-2.5-flash"
 GOOGLE_DRIVE_FOLDER_ID = "your_google_drive_folder_id_here"
 APP_ENCRYPTION_KEY = "generate_with_python_cryptography_fernet_key"
+DISABLE_LOGIN = false
 GOOGLE_SERVICE_ACCOUNT_JSON = """
 {
   "type": "service_account",
@@ -138,6 +140,12 @@ The app supports Google login through Streamlit's native OIDC login. Configure t
 
 ```text
 https://your-streamlit-app.streamlit.app/oauth2callback
+```
+
+If `[auth]` is missing, the app shows a login configuration warning instead of silently entering guest mode. For local development only, set:
+
+```toml
+DISABLE_LOGIN = true
 ```
 
 After login, users can save encrypted defaults per Google account:

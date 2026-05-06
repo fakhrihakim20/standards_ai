@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -203,6 +204,16 @@ def auth_configured() -> bool:
         return False
 
 
+def login_disabled_for_local_dev() -> bool:
+    """Allow local development without OAuth when explicitly requested."""
+    try:
+        secret_value = st.secrets.get("DISABLE_LOGIN")
+    except Exception:
+        secret_value = None
+    value = os.getenv("DISABLE_LOGIN") or secret_value
+    return str(value).lower() in {"1", "true", "yes"}
+
+
 def current_user_email() -> str:
     """Return logged-in user email, or a guest identity for local development."""
     try:
@@ -306,7 +317,7 @@ def main() -> None:
     )
     language_name = LANGUAGES[lang]
 
-    if auth_configured():
+    if not login_disabled_for_local_dev():
         try:
             if not st.user.is_logged_in:
                 login_screen(lang)
