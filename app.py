@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from src.compare import retrieve_by_body
 from src.drive_storage import GoogleDriveConfigError, GoogleDriveSyncError, sync_drive_pdfs
 from src.gemini_client import GeminiClientError, MissingGeminiApiKeyError, generate_answer, get_model_name
-from src.i18n import LANGUAGES, TOPIC_CHIPS, t
+from src.i18n import LANGUAGES, t
 from src.indexing import build_index, list_pdfs
 from src.prompts import build_ask_prompt, build_compare_prompt
 from src.search import search_chunks
@@ -54,7 +54,7 @@ def apply_github_theme() -> None:
 
         .block-container {
           max-width: 1180px;
-          padding-top: 28px;
+          padding-top: 72px;
         }
 
         h1, h2, h3 {
@@ -158,20 +158,6 @@ def render_chunks(chunks: list[dict], lang: str) -> None:
     for i, chunk in enumerate(chunks, start=1):
         with st.expander(f"{i}. {source_caption(chunk, lang)}"):
             st.write(chunk.get("text", ""))
-
-
-def apply_topic_chip(state_key: str, value: str) -> None:
-    existing = st.session_state.get(state_key, "")
-    st.session_state[state_key] = f"{existing} {value}".strip() if existing else value
-
-
-def render_topic_chips(lang: str, state_key: str) -> None:
-    st.caption(t(lang, "topic_helpers"))
-    labels = TOPIC_CHIPS.get(lang, TOPIC_CHIPS["id"])
-    cols = st.columns(3)
-    for idx, (label, value) in enumerate(labels):
-        with cols[idx % 3]:
-            st.button(label, key=f"{state_key}_{idx}", on_click=apply_topic_chip, args=(state_key, value))
 
 
 def get_session_drive_json() -> str | None:
@@ -299,7 +285,6 @@ def main() -> None:
 
     with tabs[1]:
         st.header(t(lang, "ask"))
-        render_topic_chips(lang, "ask_question")
         question = st.text_area(t(lang, "question"), key="ask_question", height=120)
         ask_body = st.selectbox(t(lang, "body_filter"), ["ALL"] + BODIES, key="ask_body")
         ask_top_k = st.slider(t(lang, "num_excerpts"), 1, 15, 8, key="ask_top_k")
@@ -329,7 +314,6 @@ def main() -> None:
 
     with tabs[2]:
         st.header(t(lang, "compare"))
-        render_topic_chips(lang, "compare_topic")
         topic = st.text_area(t(lang, "comparison_topic"), key="compare_topic", height=120)
         st.caption(t(lang, "selected_bodies"))
         cols = st.columns(len(BODIES))

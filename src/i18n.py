@@ -156,51 +156,6 @@ TRANSLATIONS = {
     },
 }
 
-
-TOPIC_CHIPS = {
-    "id": [
-        ("Interpretasi DGA", "DGA interpretation"),
-        ("Metode rasio gas", "gas ratio method"),
-        ("Metode key gas", "key gas method"),
-        ("Penuaan kertas isolasi transformator", "transformer paper ageing"),
-        ("Kadar air dalam minyak", "moisture in oil"),
-        ("Pembebanan dan temperatur", "loading and temperature"),
-        ("Tindakan pemeliharaan", "maintenance action"),
-        ("Tingkat keparahan gangguan", "fault severity"),
-        ("Gangguan termal", "thermal fault"),
-        ("Partial discharge", "partial discharge"),
-        ("Arcing fault", "arcing fault"),
-        ("Dissolved gas analysis", "dissolved gas analysis"),
-        ("Kualitas minyak", "oil quality"),
-        ("Penuaan isolasi", "insulation ageing"),
-        ("Rasio CO dan CO2", "CO and CO2 ratio"),
-        ("Acetylene", "acetylene"),
-        ("Ethylene", "ethylene"),
-        ("Hydrogen", "hydrogen"),
-    ],
-    "en": [
-        ("DGA interpretation", "DGA interpretation"),
-        ("gas ratio method", "gas ratio method"),
-        ("key gas method", "key gas method"),
-        ("transformer paper ageing", "transformer paper ageing"),
-        ("moisture in oil", "moisture in oil"),
-        ("loading and temperature", "loading and temperature"),
-        ("maintenance action", "maintenance action"),
-        ("fault severity", "fault severity"),
-        ("thermal fault", "thermal fault"),
-        ("partial discharge", "partial discharge"),
-        ("arcing fault", "arcing fault"),
-        ("dissolved gas analysis", "dissolved gas analysis"),
-        ("oil quality", "oil quality"),
-        ("insulation ageing", "insulation ageing"),
-        ("CO and CO2 ratio", "CO and CO2 ratio"),
-        ("acetylene", "acetylene"),
-        ("ethylene", "ethylene"),
-        ("hydrogen", "hydrogen"),
-    ],
-}
-
-
 def t(lang: str, key: str) -> str:
     """Translate a UI key, defaulting to Bahasa Indonesia."""
     return TRANSLATIONS.get(lang, TRANSLATIONS["id"]).get(key, key)
