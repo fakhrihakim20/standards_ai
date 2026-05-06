@@ -21,6 +21,128 @@ from src.search import search_chunks
 from src.utils import BODIES, CHUNKS_PATH, PDF_DIR, STANDARDS_INDEX_PATH, ensure_data_dirs, read_json, read_jsonl
 
 
+def apply_github_theme() -> None:
+    """Apply a compact GitHub-inspired visual theme to Streamlit."""
+    st.markdown(
+        """
+        <style>
+        :root {
+          --gh-canvas: #ffffff;
+          --gh-canvas-subtle: #f6f8fa;
+          --gh-border: #d0d7de;
+          --gh-fg: #24292f;
+          --gh-muted: #57606a;
+          --gh-accent: #0969da;
+          --gh-success: #1a7f37;
+          --gh-danger: #cf222e;
+        }
+
+        .stApp {
+          background: var(--gh-canvas);
+          color: var(--gh-fg);
+        }
+
+        [data-testid="stSidebar"] {
+          background: var(--gh-canvas-subtle);
+          border-right: 1px solid var(--gh-border);
+        }
+
+        [data-testid="stSidebar"] h1 {
+          font-size: 20px;
+          line-height: 1.25;
+        }
+
+        .block-container {
+          max-width: 1180px;
+          padding-top: 28px;
+        }
+
+        h1, h2, h3 {
+          color: var(--gh-fg);
+          letter-spacing: 0;
+        }
+
+        h2, h3 {
+          border-bottom: 1px solid var(--gh-border);
+          padding-bottom: 8px;
+        }
+
+        [data-testid="stMetric"] {
+          background: var(--gh-canvas-subtle);
+          border: 1px solid var(--gh-border);
+          border-radius: 6px;
+          padding: 12px 14px;
+        }
+
+        [data-testid="stExpander"] {
+          border: 1px solid var(--gh-border);
+          border-radius: 6px;
+          background: var(--gh-canvas);
+          box-shadow: none;
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+          gap: 0;
+          border-bottom: 1px solid var(--gh-border);
+        }
+
+        .stTabs [data-baseweb="tab"] {
+          border-radius: 6px 6px 0 0;
+          padding: 10px 14px;
+          color: var(--gh-muted);
+        }
+
+        .stTabs [aria-selected="true"] {
+          color: var(--gh-fg);
+          border: 1px solid var(--gh-border);
+          border-bottom: 2px solid var(--gh-canvas);
+          background: var(--gh-canvas);
+        }
+
+        .stButton > button {
+          border-radius: 6px;
+          border: 1px solid var(--gh-border);
+          background: var(--gh-canvas-subtle);
+          color: var(--gh-fg);
+          font-weight: 600;
+          box-shadow: none;
+        }
+
+        .stButton > button[kind="primary"] {
+          background: var(--gh-success);
+          border-color: rgba(27, 31, 36, 0.15);
+          color: #ffffff;
+        }
+
+        .stTextInput input,
+        .stTextArea textarea,
+        .stSelectbox div[data-baseweb="select"],
+        .stFileUploader section {
+          border-radius: 6px;
+        }
+
+        div[data-testid="stDataFrame"] {
+          border: 1px solid var(--gh-border);
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        .stAlert {
+          border-radius: 6px;
+          border: 1px solid var(--gh-border);
+        }
+
+        code {
+          border-radius: 6px;
+          color: var(--gh-fg);
+          background: var(--gh-canvas-subtle);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def source_caption(chunk: dict, lang: str) -> str:
     return (
         f"{t(lang, 'body')}: {chunk.get('body', '-')} | "
@@ -78,6 +200,7 @@ def main() -> None:
     load_dotenv()
     ensure_data_dirs()
     st.set_page_config(page_title=t("id", "app_title"), layout="wide")
+    apply_github_theme()
 
     current_lang = st.session_state.get("lang_code", "id")
     lang = st.sidebar.selectbox(
@@ -105,7 +228,7 @@ def main() -> None:
     st.sidebar.write(f"**{t(lang, 'data_folder')}:** `{PDF_DIR}`")
     st.sidebar.info(t(lang, "privacy"))
 
-    tabs = st.tabs([t(lang, "index_pdfs"), t(lang, "search"), t(lang, "ask"), t(lang, "compare"), t(lang, "settings")])
+    tabs = st.tabs([t(lang, "index_pdfs"), t(lang, "ask"), t(lang, "compare"), t(lang, "settings")])
 
     with tabs[0]:
         st.header(t(lang, "index_pdfs"))
@@ -175,21 +298,6 @@ def main() -> None:
                     st.write(f"- {warning}")
 
     with tabs[1]:
-        st.header(t(lang, "search"))
-        query = st.text_input(t(lang, "question"), key="search_query")
-        body = st.selectbox(t(lang, "body_filter"), ["ALL"] + BODIES, key="search_body")
-        top_k = st.slider(t(lang, "num_excerpts"), 1, 20, 8, key="search_top_k")
-        if st.button(t(lang, "search_button"), type="primary"):
-            if not query.strip():
-                st.error(t(lang, "empty_query"))
-            else:
-                results = search_chunks(query, body=body, top_k=top_k)
-                if not results:
-                    st.warning(t(lang, "no_results"))
-                else:
-                    render_chunks(results, lang)
-
-    with tabs[2]:
         st.header(t(lang, "ask"))
         render_topic_chips(lang, "ask_question")
         question = st.text_area(t(lang, "question"), key="ask_question", height=120)
@@ -219,7 +327,7 @@ def main() -> None:
                     st.subheader(t(lang, "retrieved_sources"))
                     render_chunks(retrieved, lang)
 
-    with tabs[3]:
+    with tabs[2]:
         st.header(t(lang, "compare"))
         render_topic_chips(lang, "compare_topic")
         topic = st.text_area(t(lang, "comparison_topic"), key="compare_topic", height=120)
@@ -257,7 +365,7 @@ def main() -> None:
                         st.markdown(f"### {body_name}")
                         render_chunks(evidence, lang)
 
-    with tabs[4]:
+    with tabs[3]:
         st.header(t(lang, "settings"))
         st.write(t(lang, "about_text"))
         st.code(t(lang, "data_paths_note"), language="text")

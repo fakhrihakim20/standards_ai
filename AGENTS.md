@@ -40,9 +40,8 @@ This repository is a private/internal standards assistant for IEEE, IEC, SPLN, S
 
 1. Put PDFs in `data/pdfs/`.
 2. Build/rebuild the index.
-3. Search standards.
-4. Ask questions with retrieved evidence.
-5. Compare IEC vs IEEE vs SPLN by topic.
+3. Ask questions with retrieved evidence.
+4. Compare IEC vs IEEE vs SPLN by topic.
 
 # Quality requirements
 

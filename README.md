@@ -1,6 +1,6 @@
 # Asisten Standar IEEE-IEC-SPLN
 
-Prototype Streamlit untuk asisten standar internal/private. Aplikasi membaca PDF standar dari folder lokal, mengekstrak teks dengan PyMuPDF, membuat indeks JSONL ringan, melakukan pencarian lokal dengan TF-IDF, lalu mengirim hanya cuplikan terpilih ke Gemini 2.5 Flash.
+Prototype Streamlit untuk asisten standar internal/private. Aplikasi membaca PDF standar dari folder lokal, mengekstrak teks dengan PyMuPDF, membuat indeks JSONL ringan, mengambil cuplikan relevan secara lokal dengan TF-IDF, lalu mengirim hanya cuplikan terpilih ke Gemini 2.5 Flash.
 
 ## Privacy and Copyright
 
@@ -140,13 +140,9 @@ If a PDF has little or no extractable text, enable `Gunakan OCR untuk PDF hasil 
 
 For local Windows usage, install Tesseract OCR separately if OCR fails with `Tesseract executable is not installed`. Streamlit Community Cloud installs Tesseract from `packages.txt`.
 
-## Search
-
-Use the `Pencarian / Search` tab. Enter a keyword or topic, choose a body filter, set the number of excerpts, and search. Results include body, standard number, source file, clause or section when detected, page, score, and text excerpt.
-
 ## Ask Questions
 
-Use the `Tanya Standar / Ask Standards` tab. The app retrieves top chunks locally, builds a compact prompt, and sends only those retrieved chunks to Gemini. It never sends full PDFs.
+Use the `Tanya Standar / Ask Standards` tab. The app retrieves top chunks locally in the background, builds a compact prompt, and sends only those retrieved chunks to Gemini. It never sends full PDFs.
 
 ## Compare IEC vs IEEE vs SPLN
 
