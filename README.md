@@ -107,6 +107,14 @@ GOOGLE_SERVICE_ACCOUNT_JSON = """
 
 The app downloads PDFs from Drive into temporary local storage, then builds the local JSONL index. It still does not send full PDFs to Gemini.
 
+You can also provide credentials directly in the web UI:
+
+- Sidebar: enter a custom Gemini API key and Gemini model.
+- `Indeks PDF / Index PDFs`: enter a Google Drive folder link or folder ID.
+- Upload or paste the Google service account JSON.
+
+Credentials entered in the UI are used only for the current Streamlit session. They are not written to `.env`, JSON files, or the repository.
+
 ## Add PDFs Locally
 
 Put IEC, IEEE, SPLN, SNI, or related electrical engineering PDFs in:
@@ -121,7 +129,7 @@ The app detects the standards body and likely standard number from file names su
 
 Open the `Indeks PDF / Index PDFs` tab.
 
-If using Google Drive, click `Sinkronkan dari Google Drive / Sync from Google Drive` first. Then click `Bangun Ulang Indeks / Rebuild Index`.
+If using Google Drive, paste the folder link/ID and service account JSON, then click `Sinkronkan dari Google Drive / Sync from Google Drive` first. The app shows the Drive PDF locations that were downloaded. Then click `Bangun Ulang Indeks / Rebuild Index`.
 
 The app creates:
 

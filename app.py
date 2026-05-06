@@ -52,6 +52,28 @@ def render_topic_chips(lang: str, state_key: str) -> None:
             st.button(label, key=f"{state_key}_{idx}", on_click=apply_topic_chip, args=(state_key, value))
 
 
+def get_session_drive_json() -> str | None:
+    """Return service account JSON supplied through the UI for this session."""
+    uploaded = st.session_state.get("drive_json_upload")
+    if uploaded is not None:
+        try:
+            return uploaded.getvalue().decode("utf-8")
+        except Exception:
+            return None
+    pasted = st.session_state.get("drive_json_paste", "")
+    return pasted.strip() or None
+
+
+def get_session_gemini_key() -> str | None:
+    """Return a custom Gemini API key supplied through the UI."""
+    return st.session_state.get("custom_gemini_api_key", "").strip() or None
+
+
+def get_session_gemini_model() -> str:
+    """Return a custom Gemini model name or the configured default."""
+    return st.session_state.get("custom_gemini_model", "").strip() or get_model_name()
+
+
 def main() -> None:
     load_dotenv()
     ensure_data_dirs()
@@ -68,7 +90,18 @@ def main() -> None:
     language_name = LANGUAGES[lang]
 
     st.sidebar.title(t(lang, "app_title"))
-    st.sidebar.write(f"**{t(lang, 'gemini_model')}:** `{get_model_name()}`")
+    st.sidebar.text_input(
+        t(lang, "custom_gemini_api_key"),
+        type="password",
+        key="custom_gemini_api_key",
+        help=t(lang, "custom_gemini_help"),
+    )
+    st.sidebar.text_input(
+        t(lang, "custom_gemini_model"),
+        value=get_model_name(),
+        key="custom_gemini_model",
+    )
+    st.sidebar.write(f"**{t(lang, 'gemini_model')}:** `{get_session_gemini_model()}`")
     st.sidebar.write(f"**{t(lang, 'data_folder')}:** `{PDF_DIR}`")
     st.sidebar.info(t(lang, "privacy"))
 
@@ -78,15 +111,32 @@ def main() -> None:
         st.header(t(lang, "index_pdfs"))
         st.subheader(t(lang, "drive_sync"))
         st.caption(t(lang, "drive_sync_help"))
+        drive_folder_input = st.text_input(t(lang, "drive_folder"), key="drive_folder_input")
+        st.file_uploader(
+            t(lang, "drive_json_upload"),
+            type=["json"],
+            key="drive_json_upload",
+            help=t(lang, "drive_json_help"),
+        )
+        st.text_area(
+            t(lang, "drive_json_paste"),
+            key="drive_json_paste",
+            height=120,
+            help=t(lang, "drive_json_help"),
+        )
         drive_col1, drive_col2 = st.columns(2)
         if drive_col1.button(t(lang, "sync_drive"), type="secondary"):
             try:
                 with st.spinner(t(lang, "sync_drive")):
-                    sync_result = sync_drive_pdfs()
+                    sync_result = sync_drive_pdfs(
+                        folder_id=drive_folder_input or None,
+                        service_account_info=get_session_drive_json(),
+                    )
                 drive_col2.metric(t(lang, "drive_pdfs_found"), sync_result["available"])
                 st.success(f"{t(lang, 'drive_sync_success')} {t(lang, 'downloaded_files')}: {sync_result['downloaded']}")
-                if sync_result["files"]:
-                    st.dataframe(pd.DataFrame({"PDF": sync_result["files"]}), use_container_width=True)
+                if sync_result["locations"]:
+                    st.subheader(t(lang, "drive_locations"))
+                    st.dataframe(pd.DataFrame(sync_result["locations"]), use_container_width=True)
                 if sync_result["warnings"]:
                     st.warning(t(lang, "warnings"))
                     for warning in sync_result["warnings"]:
@@ -155,7 +205,11 @@ def main() -> None:
                 else:
                     prompt = build_ask_prompt(question, retrieved, language_name, lang)
                     try:
-                        answer = generate_answer(prompt)
+                        answer = generate_answer(
+                            prompt,
+                            api_key=get_session_gemini_key(),
+                            model_name=get_session_gemini_model(),
+                        )
                         st.subheader(t(lang, "answer"))
                         st.markdown(answer)
                     except MissingGeminiApiKeyError:
@@ -187,7 +241,11 @@ def main() -> None:
                 else:
                     prompt = build_compare_prompt(topic, grouped, language_name)
                     try:
-                        answer = generate_answer(prompt)
+                        answer = generate_answer(
+                            prompt,
+                            api_key=get_session_gemini_key(),
+                            model_name=get_session_gemini_model(),
+                        )
                         st.subheader(t(lang, "answer"))
                         st.markdown(answer)
                     except MissingGeminiApiKeyError:

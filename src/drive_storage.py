@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -43,18 +44,35 @@ def _read_streamlit_secret(key: str) -> Any:
         return None
 
 
-def get_drive_folder_id() -> str:
+def parse_drive_folder_id(value: str) -> str:
+    """Extract a Google Drive folder ID from a raw ID or folder URL."""
+    value = (value or "").strip()
+    match = re.search(r"/folders/([A-Za-z0-9_-]+)", value)
+    if match:
+        return match.group(1)
+    match = re.search(r"[?&]id=([A-Za-z0-9_-]+)", value)
+    if match:
+        return match.group(1)
+    return value
+
+
+def get_drive_folder_id(folder_id: str | None = None) -> str:
     """Return the configured Google Drive folder ID."""
     _load_env()
-    folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID") or _read_streamlit_secret("GOOGLE_DRIVE_FOLDER_ID")
+    folder_id = folder_id or os.getenv("GOOGLE_DRIVE_FOLDER_ID") or _read_streamlit_secret("GOOGLE_DRIVE_FOLDER_ID")
     if not folder_id:
         raise GoogleDriveConfigError("GOOGLE_DRIVE_FOLDER_ID is missing.")
-    return str(folder_id).strip()
+    return parse_drive_folder_id(str(folder_id))
 
 
-def _load_service_account_info() -> dict[str, Any]:
+def _load_service_account_info(service_account_info: dict[str, Any] | str | None = None) -> dict[str, Any]:
     """Load service account credentials from secrets, env JSON, or local file."""
     _load_env()
+    if service_account_info:
+        if isinstance(service_account_info, dict):
+            return service_account_info
+        return json.loads(service_account_info)
+
     secret_info = _read_streamlit_secret("GOOGLE_SERVICE_ACCOUNT_JSON")
     if secret_info:
         if isinstance(secret_info, dict):
@@ -73,10 +91,10 @@ def _load_service_account_info() -> dict[str, Any]:
     raise GoogleDriveConfigError("GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_FILE is missing.")
 
 
-def get_drive_service():
+def get_drive_service(service_account_info: dict[str, Any] | str | None = None):
     """Create a read-only Google Drive API service."""
     try:
-        info = _load_service_account_info()
+        info = _load_service_account_info(service_account_info)
         credentials = service_account.Credentials.from_service_account_info(
             info,
             scopes=[DRIVE_READONLY_SCOPE],
@@ -113,41 +131,54 @@ def _list_drive_children(service, folder_id: str, mime_type: str | None = None) 
     return files
 
 
-def list_drive_pdfs(folder_id: str | None = None, recursive: bool = True, max_depth: int = 5) -> list[dict[str, str]]:
+def list_drive_pdfs(
+    folder_id: str | None = None,
+    recursive: bool = True,
+    max_depth: int = 5,
+    service_account_info: dict[str, Any] | str | None = None,
+) -> list[dict[str, str]]:
     """List PDF files in the configured Google Drive folder.
 
     Recursive listing helps when a standards library is grouped into IEC/IEEE/SPLN
     subfolders.
     """
-    folder_id = folder_id or get_drive_folder_id()
-    service = get_drive_service()
-    return _list_drive_pdfs_with_service(service, folder_id, recursive, max_depth)
+    folder_id = get_drive_folder_id(folder_id)
+    service = get_drive_service(service_account_info)
+    return _list_drive_pdfs_with_service(service, folder_id, recursive, max_depth, path="")
 
 
-def _list_drive_pdfs_with_service(service, folder_id: str, recursive: bool, max_depth: int) -> list[dict[str, str]]:
+def _list_drive_pdfs_with_service(service, folder_id: str, recursive: bool, max_depth: int, path: str) -> list[dict[str, str]]:
     """List PDFs using an existing Drive service instance."""
     try:
         files = _list_drive_children(service, folder_id, "application/pdf")
+        for file_info in files:
+            file_info["drive_path"] = f"{path}/{file_info['name']}".strip("/")
         if recursive and max_depth > 0:
             folders = _list_drive_children(service, folder_id, "application/vnd.google-apps.folder")
             for folder in folders:
-                files.extend(_list_drive_pdfs_with_service(service, folder["id"], recursive=True, max_depth=max_depth - 1))
+                folder_path = f"{path}/{folder['name']}".strip("/")
+                files.extend(_list_drive_pdfs_with_service(service, folder["id"], recursive=True, max_depth=max_depth - 1, path=folder_path))
         return files
     except Exception as exc:
         raise GoogleDriveSyncError(str(exc)) from exc
 
 
-def sync_drive_pdfs(folder_id: str | None = None, dest_dir: Path = PDF_DIR) -> dict[str, Any]:
+def sync_drive_pdfs(
+    folder_id: str | None = None,
+    dest_dir: Path = PDF_DIR,
+    service_account_info: dict[str, Any] | str | None = None,
+) -> dict[str, Any]:
     """Download PDFs from Google Drive into the local PDF folder.
 
     The local folder is temporary storage on Streamlit Cloud. The app still indexes
     locally into JSONL and never sends full PDFs to Gemini.
     """
     ensure_data_dirs()
-    folder_id = folder_id or get_drive_folder_id()
-    service = get_drive_service()
-    files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5)
+    folder_id = get_drive_folder_id(folder_id)
+    service = get_drive_service(service_account_info)
+    files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5, path="")
     downloaded: list[str] = []
+    locations: list[dict[str, str]] = []
     warnings: list[str] = []
 
     for file_info in files:
@@ -165,6 +196,7 @@ def sync_drive_pdfs(folder_id: str | None = None, dest_dir: Path = PDF_DIR) -> d
                 _, done = downloader.next_chunk()
             target_path.write_bytes(buffer.getvalue())
             downloaded.append(file_name)
+            locations.append({"file": file_name, "drive_path": file_info.get("drive_path", file_name)})
         except Exception as exc:
             warnings.append(f"{file_name}: {exc}")
 
@@ -173,5 +205,6 @@ def sync_drive_pdfs(folder_id: str | None = None, dest_dir: Path = PDF_DIR) -> d
         "available": len(files),
         "downloaded": len(downloaded),
         "files": downloaded,
+        "locations": locations,
         "warnings": warnings,
     }

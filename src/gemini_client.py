@@ -38,17 +38,17 @@ def get_model_name() -> str:
     return os.getenv("GEMINI_MODEL") or _read_secret("GEMINI_MODEL") or "gemini-2.5-flash"
 
 
-def generate_answer(prompt: str) -> str:
+def generate_answer(prompt: str, api_key: str | None = None, model_name: str | None = None) -> str:
     """Generate an answer with Gemini.
 
     Full PDFs are never sent here; callers should pass only retrieved excerpts.
     """
     _load_env()
-    api_key = os.getenv("GEMINI_API_KEY") or _read_secret("GEMINI_API_KEY")
+    api_key = api_key or os.getenv("GEMINI_API_KEY") or _read_secret("GEMINI_API_KEY")
     if not api_key:
         raise MissingGeminiApiKeyError("GEMINI_API_KEY is missing.")
 
-    model_name = get_model_name()
+    model_name = model_name or get_model_name()
     try:
         from google import genai
 
