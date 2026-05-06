@@ -927,6 +927,7 @@ def main() -> None:
                 max_value=10,
                 value=2,
                 step=1,
+                key="drive_max_depth",
                 help=t(lang, "drive_max_depth_help"),
             )
             drive_max_files = limit_col.number_input(
@@ -935,9 +936,15 @@ def main() -> None:
                 max_value=10000,
                 value=100,
                 step=50,
+                key="drive_max_files",
                 help=t(lang, "drive_max_files_help"),
             )
-            drive_recursive = st.checkbox(t(lang, "drive_recursive"), value=True, help=t(lang, "drive_recursive_help"))
+            drive_recursive = st.checkbox(
+                t(lang, "drive_recursive"),
+                value=True,
+                key="drive_recursive",
+                help=t(lang, "drive_recursive_help"),
+            )
         drive_folder_input = st.session_state.get("drive_folder_input", "")
         drive_path_filter = st.session_state.get("drive_path_filter", "")
         drive_max_depth = st.session_state.get("drive_max_depth", 2)
