@@ -459,30 +459,36 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
     is_night = theme_mode == "night"
     if is_night:
         wallpaper = (
-            "radial-gradient(circle at 18% 10%, rgba(208, 188, 255, 0.18), transparent 30%),"
-            "radial-gradient(circle at 82% 8%, rgba(239, 184, 200, 0.16), transparent 28%),"
-            "linear-gradient(180deg, #101318 0%, #16151d 100%)"
+            "radial-gradient(circle at 18% 10%, rgba(96, 165, 250, 0.18), transparent 30%),"
+            "radial-gradient(circle at 82% 8%, rgba(148, 163, 184, 0.12), transparent 28%),"
+            "linear-gradient(180deg, #0f172a 0%, #111827 100%)"
         )
     else:
         wallpaper = (
-            "radial-gradient(circle at 18% 8%, rgba(103, 80, 164, 0.16), transparent 30%),"
-            "radial-gradient(circle at 84% 10%, rgba(125, 82, 96, 0.13), transparent 28%),"
-            "linear-gradient(180deg, #f7f2fa 0%, #fff8ff 100%)"
+            "radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.10), transparent 30%),"
+            "radial-gradient(circle at 84% 10%, rgba(148, 163, 184, 0.18), transparent 28%),"
+            "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)"
         )
     palette = {
-        "bg": "#101318" if is_night else "#f7f2fa",
-        "surface": "#1b1b20" if is_night else "#fffbfe",
-        "surface_soft": "#23242a" if is_night else "#f1eaf4",
-        "field": "#121318" if is_night else "#fef7ff",
-        "border": "#49454f" if is_night else "#e7dfe9",
-        "text": "#e6e1e5" if is_night else "#1d1b20",
-        "muted": "#cac4d0" if is_night else "#675f6b",
-        "primary": "#d0bcff" if is_night else "#6750a4",
-        "primary_text": "#381e72" if is_night else "#ffffff",
-        "secondary": "#ccc2dc" if is_night else "#625b71",
-        "tertiary": "#efb8c8" if is_night else "#7d5260",
-        "success": "#b7f7d0" if is_night else "#146c43",
-        "shadow": "0 18px 44px rgba(0, 0, 0, 0.34)" if is_night else "0 18px 44px rgba(103, 80, 164, 0.14)",
+        "bg": "#0f172a" if is_night else "#f8fafc",
+        "surface": "#111827" if is_night else "#ffffff",
+        "surface_soft": "#1f2937" if is_night else "#eef2f7",
+        "field": "#0b1220" if is_night else "#f8fafc",
+        "border": "#334155" if is_night else "#d7dde8",
+        "text": "#f8fafc" if is_night else "#111827",
+        "muted": "#cbd5e1" if is_night else "#4b5563",
+        "primary": "#60a5fa" if is_night else "#2563eb",
+        "primary_text": "#07111f" if is_night else "#ffffff",
+        "secondary": "#93c5fd" if is_night else "#475569",
+        "tertiary": "#38bdf8" if is_night else "#0ea5e9",
+        "success": "#86efac" if is_night else "#15803d",
+        "shadow": "0 18px 44px rgba(0, 0, 0, 0.34)" if is_night else "0 16px 38px rgba(15, 23, 42, 0.10)",
+        "alert_bg": "#f1f5f9" if not is_night else "#1e293b",
+        "alert_text": "#1f2937" if not is_night else "#e5e7eb",
+        "warning_bg": "#fff7ed" if not is_night else "#3b2a12",
+        "warning_text": "#9a3412" if not is_night else "#fed7aa",
+        "error_bg": "#fef2f2" if not is_night else "#3f1d24",
+        "error_text": "#991b1b" if not is_night else "#fecaca",
         "wallpaper": wallpaper,
     }
     st.markdown(
@@ -538,6 +544,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           background: {palette["primary"]} !important;
           color: {palette["primary_text"]} !important;
           border-color: transparent !important;
+          box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22) !important;
         }}
 
         .stTextInput input,
@@ -570,6 +577,31 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
 
         .pp-kicker {{
           color: {palette["primary"]} !important;
+        }}
+
+        .stAlert {{
+          background: {palette["alert_bg"]} !important;
+          color: {palette["alert_text"]} !important;
+          border-color: {palette["border"]} !important;
+        }}
+
+        .stAlert * {{
+          color: inherit !important;
+        }}
+
+        div[data-baseweb="notification"][kind="error"],
+        .stAlert[data-baseweb="notification"] {{
+          color: {palette["alert_text"]} !important;
+        }}
+
+        code {{
+          color: {palette["primary"]} !important;
+          background: {"#eaf2ff" if not is_night else "#172554"} !important;
+          border-color: {"#bfdbfe" if not is_night else "#1d4ed8"} !important;
+        }}
+
+        .stProgress > div > div > div > div {{
+          background: linear-gradient(90deg, {palette["primary"]}, {palette["tertiary"]}) !important;
         }}
 
         .pp-token-row span {{
