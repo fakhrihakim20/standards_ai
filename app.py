@@ -465,7 +465,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         )
     else:
         wallpaper = (
-            "radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.10), transparent 30%),"
+            "radial-gradient(circle at 18% 8%, rgba(40, 85, 113, 0.10), transparent 30%),"
             "radial-gradient(circle at 84% 10%, rgba(148, 163, 184, 0.18), transparent 28%),"
             "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)"
         )
@@ -477,7 +477,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         "border": "#334155" if is_night else "#d7dde8",
         "text": "#f8fafc" if is_night else "#111827",
         "muted": "#cbd5e1" if is_night else "#4b5563",
-        "primary": "#60a5fa" if is_night else "#2563eb",
+        "primary": "#60a5fa" if is_night else "#285571",
         "primary_text": "#07111f" if is_night else "#ffffff",
         "secondary": "#93c5fd" if is_night else "#475569",
         "tertiary": "#38bdf8" if is_night else "#0ea5e9",
@@ -549,7 +549,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           background: {palette["primary"]} !important;
           color: {palette["primary_text"]} !important;
           border-color: transparent !important;
-          box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22) !important;
+          box-shadow: 0 10px 24px rgba(40, 85, 113, 0.22) !important;
         }}
 
         .stTextInput input,
@@ -661,7 +661,7 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           border-radius: inherit;
           background:
             linear-gradient(135deg, rgba(255,255,255,0.48), transparent 34%),
-            radial-gradient(circle at 88% 12%, {"rgba(37,99,235,0.16)" if not is_night else "rgba(96,165,250,0.20)"}, transparent 30%),
+            radial-gradient(circle at 88% 12%, {"rgba(40,85,113,0.16)" if not is_night else "rgba(96,165,250,0.20)"}, transparent 30%),
             radial-gradient(circle at 12% 88%, rgba(255,255,255,0.18), transparent 28%);
           mix-blend-mode: {"normal" if not is_night else "screen"};
           opacity: {"0.62" if not is_night else "0.38"};
@@ -676,8 +676,8 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           border-radius: inherit;
           border: 1px solid {"rgba(255,255,255,0.54)" if not is_night else "rgba(147,197,253,0.16)"};
           box-shadow:
-            0 0 0 1px {"rgba(37,99,235,0.05)" if not is_night else "rgba(96,165,250,0.10)"},
-            inset 10px 0 18px {"rgba(37,99,235,0.08)" if not is_night else "rgba(96,165,250,0.08)"},
+            0 0 0 1px {"rgba(40,85,113,0.05)" if not is_night else "rgba(96,165,250,0.10)"},
+            inset 10px 0 18px {"rgba(40,85,113,0.08)" if not is_night else "rgba(96,165,250,0.08)"},
             inset -10px 0 18px {"rgba(14,165,233,0.07)" if not is_night else "rgba(56,189,248,0.07)"};
         }}
 
