@@ -111,6 +111,14 @@ def _index_folder_for_load(service, root_folder_id: str) -> tuple[str, str]:
 
 def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
     """Return a user-actionable error for common Drive permission failures."""
+    error_text = str(exc)
+    if "storageQuotaExceeded" in error_text or "Service Accounts do not have storage quota" in error_text:
+        return CloudStoreError(
+            "Google Drive rejected creating a new cache file because service accounts do not have "
+            "storage quota in a regular My Drive folder. Use a Shared Drive for the cache folder, "
+            "or manually create these files in the selected cache folder first so the app can update "
+            "them instead of creating them: chunks.jsonl, standards_index.json, drive_manifest.json."
+        )
     if exc.resp.status in {401, 403, 404}:
         return CloudStoreError(
             "Google Drive cache folder is not accessible by the service account. "
