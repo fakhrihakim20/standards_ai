@@ -239,7 +239,11 @@ def login_screen(lang: str) -> None:
     st.header(t(lang, "login_required"))
     st.write(t(lang, "login_intro"))
     if auth_configured():
-        st.button(t(lang, "login_google"), type="primary", on_click=st.login)
+        if st.button(t(lang, "login_google"), type="primary"):
+            try:
+                st.login()
+            except Exception as exc:
+                st.error(f"{t(lang, 'auth_error')} ({type(exc).__name__})")
     else:
         st.warning(t(lang, "auth_not_configured"))
 

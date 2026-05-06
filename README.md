@@ -120,6 +120,7 @@ cookie_secret = "generate_a_long_random_string"
 client_id = "your_google_oauth_client_id"
 client_secret = "your_google_oauth_client_secret"
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
+client_kwargs = { "scope" = "openid email profile" }
 ```
 
 The app downloads PDFs from Drive into temporary local storage, then builds the local JSONL index. It still does not send full PDFs to Gemini.
