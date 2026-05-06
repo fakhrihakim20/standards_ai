@@ -195,6 +195,13 @@ The app creates:
 
 - `data/index/chunks.jsonl`
 - `data/index/standards_index.json`
+- `data/index/drive_manifest.json`
+
+When PDFs are synced from Google Drive, chunks include Drive source metadata:
+
+- `drive_path`
+- `drive_file_id`
+- `drive_web_url`
 
 If a PDF has little or no extractable text, enable `Gunakan OCR untuk PDF hasil scan / Use OCR for scanned PDFs` before rebuilding the index. OCR uses local Tesseract after the PDF is downloaded or placed locally. It still does not send full PDFs to Gemini.
 

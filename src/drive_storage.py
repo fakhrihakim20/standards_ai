@@ -284,7 +284,14 @@ def sync_drive_pdfs(
                 _, done = downloader.next_chunk()
             target_path.write_bytes(buffer.getvalue())
             downloaded.append(str(local_relative_path))
-            locations.append({"file": str(local_relative_path), "drive_path": drive_path})
+            locations.append(
+                {
+                    "file": str(local_relative_path).replace("\\", "/"),
+                    "drive_path": drive_path,
+                    "drive_file_id": file_id,
+                    "drive_web_url": f"https://drive.google.com/file/d/{file_id}/view",
+                }
+            )
         except Exception as exc:
             warnings.append(f"{file_name}: {exc}")
 

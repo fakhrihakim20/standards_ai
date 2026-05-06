@@ -6,6 +6,7 @@ from .chunking import detect_clause, split_text_into_chunks
 from .pdf_extract import extract_pdf_pages, get_page_count
 from .utils import (
     CHUNKS_PATH,
+    DRIVE_MANIFEST_PATH,
     PDF_DIR,
     STANDARDS_INDEX_PATH,
     detect_body,
@@ -14,6 +15,7 @@ from .utils import (
     safe_slug,
     write_json,
     write_jsonl,
+    read_json,
 )
 
 
@@ -28,6 +30,11 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
     """Extract PDFs and rebuild JSONL/JSON indexes from scratch."""
     ensure_data_dirs()
     pdfs = list_pdfs(pdf_dir)
+    drive_manifest = {
+        item.get("file"): item
+        for item in read_json(DRIVE_MANIFEST_PATH, [])
+        if item.get("file")
+    }
     chunks: list[dict] = []
     standards: list[dict] = []
     warnings: list[str] = []
@@ -41,6 +48,7 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
         body = detect_body(pdf_path.name)
         standard_number = detect_standard_number(pdf_path.name, body)
         source_file = str(pdf_path.relative_to(pdf_dir)).replace("\\", "/")
+        drive_info = drive_manifest.get(source_file, {})
         pages, pdf_warnings = extract_pdf_pages(pdf_path, use_ocr=use_ocr, ocr_language=ocr_language)
         warnings.extend(pdf_warnings)
         chunk_count = 0
@@ -65,6 +73,9 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
                     {
                         "chunk_id": chunk_id,
                         "source_file": source_file,
+                        "drive_path": drive_info.get("drive_path", ""),
+                        "drive_file_id": drive_info.get("drive_file_id", ""),
+                        "drive_web_url": drive_info.get("drive_web_url", ""),
                         "body": body,
                         "standard_number": standard_number,
                         "title": "",
@@ -81,6 +92,9 @@ def build_index(pdf_dir: Path = PDF_DIR, use_ocr: bool = False, ocr_language: st
         standards.append(
             {
                 "source_file": source_file,
+                "drive_path": drive_info.get("drive_path", ""),
+                "drive_file_id": drive_info.get("drive_file_id", ""),
+                "drive_web_url": drive_info.get("drive_web_url", ""),
                 "body": body,
                 "standard_number": standard_number,
                 "title": "",

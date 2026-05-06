@@ -12,6 +12,7 @@ PDF_DIR = DATA_DIR / "pdfs"
 INDEX_DIR = DATA_DIR / "index"
 CHUNKS_PATH = INDEX_DIR / "chunks.jsonl"
 STANDARDS_INDEX_PATH = INDEX_DIR / "standards_index.json"
+DRIVE_MANIFEST_PATH = INDEX_DIR / "drive_manifest.json"
 
 BODIES = ["IEC", "IEEE", "SPLN", "SNI", "OTHER"]
 
@@ -93,4 +94,3 @@ def safe_slug(value: str) -> str:
     """Create a compact ASCII-ish id fragment."""
     value = re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_")
     return value[:60] or "chunk"
-

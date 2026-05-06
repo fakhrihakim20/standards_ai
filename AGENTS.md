@@ -8,6 +8,7 @@ This repository is a private/internal standards assistant for IEEE, IEC, SPLN, S
 - The system must not send full PDFs to Gemini.
 - The system should only send selected retrieved chunks to Gemini.
 - The system must cite standard body, file/standard name, clause/section if available, and page number.
+- When available, include Google Drive file path and URL in source metadata.
 - If retrieved context is insufficient, the assistant must say so clearly.
 - Prefer retrieval-first behavior over general LLM answers.
 - Bahasa Indonesia is the default language.

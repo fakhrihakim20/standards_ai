@@ -16,7 +16,7 @@ from .drive_storage import (
     get_drive_service,
     upload_text_file,
 )
-from .utils import CHUNKS_PATH, STANDARDS_INDEX_PATH, read_jsonl, write_json, write_jsonl
+from .utils import CHUNKS_PATH, DRIVE_MANIFEST_PATH, STANDARDS_INDEX_PATH, read_jsonl, write_json, write_jsonl
 
 CACHE_FOLDER_NAME = ".standards_ai_cache"
 USER_SETTINGS_FOLDER_NAME = "user_settings"
@@ -121,8 +121,10 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
         index_folder = _index_folder(service, root_folder_id)
         chunks_text = CHUNKS_PATH.read_text(encoding="utf-8") if CHUNKS_PATH.exists() else ""
         standards_text = STANDARDS_INDEX_PATH.read_text(encoding="utf-8") if STANDARDS_INDEX_PATH.exists() else "[]"
+        drive_manifest_text = DRIVE_MANIFEST_PATH.read_text(encoding="utf-8") if DRIVE_MANIFEST_PATH.exists() else "[]"
         upload_text_file(service, index_folder, "chunks.jsonl", chunks_text, mime_type="application/jsonl")
         upload_text_file(service, index_folder, "standards_index.json", standards_text, mime_type="application/json")
+        upload_text_file(service, index_folder, "drive_manifest.json", drive_manifest_text, mime_type="application/json")
         return {"chunks": len(read_jsonl(CHUNKS_PATH)), "standards": len(json.loads(standards_text))}
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
@@ -136,15 +138,16 @@ def load_index_cache(folder_id: str | None = None, service_account_info: Any = N
         index_folder = _index_folder(service, root_folder_id)
         chunks_text = download_text_file(service, index_folder, "chunks.jsonl")
         standards_text = download_text_file(service, index_folder, "standards_index.json")
+        drive_manifest_text = download_text_file(service, index_folder, "drive_manifest.json")
         if chunks_text is None or standards_text is None:
             raise CloudStoreError("No saved index cache found in Google Drive.")
         rows = [json.loads(line) for line in chunks_text.splitlines() if line.strip()]
         standards = json.loads(standards_text)
         write_jsonl(CHUNKS_PATH, rows)
         write_json(STANDARDS_INDEX_PATH, standards)
+        write_json(DRIVE_MANIFEST_PATH, json.loads(drive_manifest_text or "[]"))
         return {"chunks": len(rows), "standards": len(standards)}
     except CloudStoreError:
         raise
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
-

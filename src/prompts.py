@@ -10,7 +10,12 @@ INSUFFICIENT = {
 def citation_label(chunk: dict) -> str:
     clause = chunk.get("clause") or "-"
     standard = chunk.get("standard_number") or chunk.get("source_file") or "-"
-    return f"{chunk.get('body', '-')}; {standard}; clause/section {clause}; page {chunk.get('page', '-')}"
+    location = chunk.get("drive_path") or chunk.get("source_file") or "-"
+    url = chunk.get("drive_web_url") or "-"
+    return (
+        f"{chunk.get('body', '-')}; {standard}; clause/section {clause}; "
+        f"page {chunk.get('page', '-')}; file {location}; url {url}"
+    )
 
 
 def format_context(chunks: list[dict]) -> str:
@@ -99,4 +104,3 @@ Output format:
 4. Missing or uncertain evidence / Bukti yang belum lengkap atau belum pasti
 5. Citations / Sitasi
 """
-

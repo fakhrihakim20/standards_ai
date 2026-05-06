@@ -27,7 +27,7 @@ from src.i18n import LANGUAGES, t
 from src.indexing import build_index, list_pdfs
 from src.prompts import build_ask_prompt, build_compare_prompt
 from src.search import search_chunks
-from src.utils import BODIES, CHUNKS_PATH, PDF_DIR, STANDARDS_INDEX_PATH, ensure_data_dirs, read_json, read_jsonl
+from src.utils import BODIES, CHUNKS_PATH, DRIVE_MANIFEST_PATH, PDF_DIR, STANDARDS_INDEX_PATH, ensure_data_dirs, read_json, read_jsonl, write_json
 
 
 def apply_github_theme() -> None:
@@ -153,10 +153,11 @@ def apply_github_theme() -> None:
 
 
 def source_caption(chunk: dict, lang: str) -> str:
+    source_location = chunk.get("drive_path") or chunk.get("source_file") or "-"
     return (
         f"{t(lang, 'body')}: {chunk.get('body', '-')} | "
         f"{t(lang, 'standard')}: {chunk.get('standard_number') or '-'} | "
-        f"{t(lang, 'source_file')}: {chunk.get('source_file') or '-'} | "
+        f"{t(lang, 'source_file')}: {source_location} | "
         f"{t(lang, 'clause')}: {chunk.get('clause') or '-'} | "
         f"{t(lang, 'page')}: {chunk.get('page') or '-'} | "
         f"{t(lang, 'score')}: {chunk.get('score', '-')}"
@@ -166,6 +167,8 @@ def source_caption(chunk: dict, lang: str) -> str:
 def render_chunks(chunks: list[dict], lang: str) -> None:
     for i, chunk in enumerate(chunks, start=1):
         with st.expander(f"{i}. {source_caption(chunk, lang)}"):
+            if chunk.get("drive_web_url"):
+                st.markdown(f"[Google Drive PDF]({chunk['drive_web_url']})")
             st.write(chunk.get("text", ""))
 
 
@@ -363,6 +366,7 @@ def main() -> None:
                 drive_col2.metric(t(lang, "drive_pdfs_found"), sync_result["available"])
                 st.success(f"{t(lang, 'drive_sync_success')} {t(lang, 'downloaded_files')}: {sync_result['downloaded']}")
                 if sync_result["locations"]:
+                    write_json(DRIVE_MANIFEST_PATH, sync_result["locations"])
                     st.subheader(t(lang, "drive_locations"))
                     st.dataframe(pd.DataFrame(sync_result["locations"]), use_container_width=True)
                 if sync_result["warnings"]:
