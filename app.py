@@ -379,7 +379,11 @@ def main() -> None:
                         service_account_info=get_session_drive_json(),
                     )
                 drive_col2.metric(t(lang, "drive_pdfs_found"), sync_result["available"])
-                st.success(f"{t(lang, 'drive_sync_success')} {t(lang, 'downloaded_files')}: {sync_result['downloaded']}")
+                st.success(
+                    f"{t(lang, 'drive_sync_success')} "
+                    f"{t(lang, 'downloaded_files')}: {sync_result['downloaded']} | "
+                    f"{t(lang, 'skipped_files')}: {sync_result.get('skipped', 0)}"
+                )
                 if sync_result["locations"]:
                     write_json(DRIVE_MANIFEST_PATH, sync_result["locations"])
                     st.subheader(t(lang, "drive_locations"))

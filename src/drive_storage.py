@@ -11,7 +11,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
-from .utils import PDF_DIR, ensure_data_dirs
+from .utils import DRIVE_MANIFEST_PATH, PDF_DIR, ensure_data_dirs, read_json
 
 DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -209,14 +209,15 @@ def _list_drive_pdfs_with_service(
             return []
         visited.add(folder_id)
 
-        files = _list_drive_children(service, folder_id, "application/pdf")
+        children = _list_drive_children(service, folder_id)
+        files = [item for item in children if item.get("mimeType") == "application/pdf"]
         for file_info in files:
             file_info["drive_path"] = f"{path}/{file_info['name']}".strip("/")
         if recursive and max_depth > 0:
-            folders = _list_drive_children(service, folder_id, FOLDER_MIME_TYPE)
+            folders = [item for item in children if item.get("mimeType") == FOLDER_MIME_TYPE]
             shortcuts = [
                 item
-                for item in _list_drive_children(service, folder_id, SHORTCUT_MIME_TYPE)
+                for item in children
                 if item.get("shortcutDetails", {}).get("targetMimeType") == FOLDER_MIME_TYPE
             ]
             for shortcut in shortcuts:
@@ -248,6 +249,32 @@ def _local_relative_pdf_path(drive_path: str) -> Path:
     return Path(*parts) if parts else Path(Path(drive_path).name)
 
 
+def _manifest_by_file_id() -> dict[str, dict[str, Any]]:
+    """Return previous Drive manifest entries keyed by Drive file id."""
+    entries = read_json(DRIVE_MANIFEST_PATH, [])
+    if not isinstance(entries, list):
+        return {}
+    return {
+        str(entry.get("drive_file_id")): entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("drive_file_id")
+    }
+
+
+def _file_is_unchanged(target_path: Path, file_info: dict[str, str], previous: dict[str, Any] | None) -> bool:
+    """Return whether a local PDF already matches Drive metadata from the last sync."""
+    if not previous or not target_path.exists():
+        return False
+    if str(previous.get("modifiedTime") or "") != str(file_info.get("modifiedTime") or ""):
+        return False
+    if str(previous.get("size") or "") != str(file_info.get("size") or ""):
+        return False
+    expected_size = file_info.get("size")
+    if expected_size and target_path.stat().st_size != int(expected_size):
+        return False
+    return True
+
+
 def sync_drive_pdfs(
     folder_id: str | None = None,
     dest_dir: Path = PDF_DIR,
@@ -262,7 +289,9 @@ def sync_drive_pdfs(
     folder_id = get_drive_folder_id(folder_id)
     service = get_drive_service(service_account_info)
     files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5, path="", visited=set())
+    previous_manifest = _manifest_by_file_id()
     downloaded: list[str] = []
+    skipped: list[str] = []
     locations: list[dict[str, str]] = []
     warnings: list[str] = []
 
@@ -274,8 +303,20 @@ def sync_drive_pdfs(
         drive_path = file_info.get("drive_path", file_name)
         local_relative_path = _local_relative_pdf_path(drive_path)
         target_path = dest_dir / local_relative_path
+        location = {
+            "file": str(local_relative_path).replace("\\", "/"),
+            "drive_path": drive_path,
+            "drive_file_id": file_id,
+            "drive_web_url": f"https://drive.google.com/file/d/{file_id}/view",
+            "modifiedTime": file_info.get("modifiedTime", ""),
+            "size": file_info.get("size", ""),
+        }
         try:
             target_path.parent.mkdir(parents=True, exist_ok=True)
+            if _file_is_unchanged(target_path, file_info, previous_manifest.get(file_id)):
+                skipped.append(str(local_relative_path))
+                locations.append(location)
+                continue
             request = service.files().get_media(fileId=file_id)
             buffer = io.BytesIO()
             downloader = MediaIoBaseDownload(buffer, request)
@@ -284,14 +325,7 @@ def sync_drive_pdfs(
                 _, done = downloader.next_chunk()
             target_path.write_bytes(buffer.getvalue())
             downloaded.append(str(local_relative_path))
-            locations.append(
-                {
-                    "file": str(local_relative_path).replace("\\", "/"),
-                    "drive_path": drive_path,
-                    "drive_file_id": file_id,
-                    "drive_web_url": f"https://drive.google.com/file/d/{file_id}/view",
-                }
-            )
+            locations.append(location)
         except Exception as exc:
             warnings.append(f"{file_name}: {exc}")
 
@@ -299,7 +333,9 @@ def sync_drive_pdfs(
         "folder_id": folder_id,
         "available": len(files),
         "downloaded": len(downloaded),
+        "skipped": len(skipped),
         "files": downloaded,
+        "skipped_files": skipped,
         "locations": locations,
         "warnings": warnings,
     }
