@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Asisten Standar IEEE-IEC-SPLN</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17202a;
+        --muted: #52616f;
+        --line: #d8e0e7;
+        --paper: #f6f8fa;
+        --accent: #0b6bcb;
+        --accent-dark: #084f96;
+        --green: #12715b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+        color: var(--ink);
+        background: #ffffff;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      .wrap {
+        width: min(1080px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .hero {
+        padding: 72px 0 52px;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--green);
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin: 0;
+        font-size: clamp(34px, 6vw, 62px);
+        line-height: 1.04;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 760px;
+        margin: 22px 0 0;
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 30px;
+      }
+
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 10px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .primary {
+        color: #ffffff;
+        background: var(--accent);
+      }
+
+      .primary:hover {
+        background: var(--accent-dark);
+      }
+
+      .secondary {
+        color: var(--accent-dark);
+        border: 1px solid var(--line);
+        background: #ffffff;
+      }
+
+      main {
+        padding: 44px 0 64px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      section {
+        margin-top: 38px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 20px;
+        background: #ffffff;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 24px;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 17px;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li {
+        margin: 6px 0;
+      }
+
+      code {
+        padding: 2px 5px;
+        border-radius: 4px;
+        background: var(--paper);
+      }
+
+      .notice {
+        border-left: 4px solid var(--green);
+        padding: 16px 18px;
+        background: #eef8f4;
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 24px 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 760px) {
+        .hero {
+          padding: 48px 0 36px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .lead {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap hero">
+        <p class="eyebrow">Private/internal electrical engineering standards assistant</p>
+        <h1>Asisten Standar IEEE-IEC-SPLN</h1>
+        <p class="lead">
+          Prototype Streamlit untuk membaca PDF standar dari Google Drive, membuat indeks JSONL lokal,
+          mencari cuplikan dengan TF-IDF, dan menjawab pertanyaan dengan Gemini hanya dari konteks terpilih.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/fakhrihakim20/standards_ai">Buka Repository</a>
+          <a class="button secondary" href="https://share.streamlit.io/">Deploy di Streamlit Cloud</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="grid">
+        <div class="card">
+          <h3>Retrieval-first</h3>
+          <p>Mengambil cuplikan relevan terlebih dahulu sebelum memanggil Gemini.</p>
+        </div>
+        <div class="card">
+          <h3>Google Drive storage</h3>
+          <p>PDF disimpan di Google Drive dan disinkronkan ke penyimpanan lokal sementara.</p>
+        </div>
+        <div class="card">
+          <h3>OCR fallback</h3>
+          <p>Tesseract OCR tersedia untuk PDF scan saat membangun ulang indeks.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Fitur utama</h2>
+        <ul>
+          <li>Ekstraksi PDF dengan PyMuPDF dan OCR fallback.</li>
+          <li>Indeks ringan berbasis <code>chunks.jsonl</code> dan <code>standards_index.json</code>.</li>
+          <li>Pencarian lokal tanpa database eksternal.</li>
+          <li>Mode tanya standar dan perbandingan IEC vs IEEE vs SPLN.</li>
+          <li>Jawaban dengan sitasi badan standar, file/nomor standar, klausul, dan halaman.</li>
+        </ul>
+      </section>
+
+      <section class="notice">
+        <h2>Catatan privasi</h2>
+        <p>
+          Halaman ini tidak memuat PDF, teks standar, API key, atau kredensial Google Drive.
+          Aplikasi utama harus dijalankan di Streamlit Cloud dengan secrets pribadi.
+        </p>
+      </section>
+
+      <section>
+        <h2>Cara menjalankan aplikasi</h2>
+        <ul>
+          <li>Deploy repository ini ke Streamlit Community Cloud.</li>
+          <li>Tambahkan <code>GEMINI_API_KEY</code>, <code>GOOGLE_DRIVE_FOLDER_ID</code>, dan <code>GOOGLE_SERVICE_ACCOUNT_JSON</code> pada Streamlit secrets.</li>
+          <li>Bagikan folder Google Drive PDF ke email service account.</li>
+          <li>Di aplikasi, klik Sync from Google Drive lalu Rebuild Index.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        Untuk penggunaan privat/internal. Verifikasi jawaban terhadap standar resmi.
+      </div>
+    </footer>
+  </body>
+</html>
+
