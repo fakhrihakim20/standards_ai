@@ -123,6 +123,7 @@ def _list_drive_children(service, folder_id: str, mime_type: str | None = None) 
                 fields="nextPageToken, files(id, name, mimeType, modifiedTime, size, shortcutDetails)",
                 pageToken=page_token,
                 orderBy="name",
+                pageSize=1000,
             )
             .execute()
         )
@@ -182,7 +183,9 @@ def download_text_file(service, parent_id: str, name: str) -> str | None:
 def list_drive_pdfs(
     folder_id: str | None = None,
     recursive: bool = True,
-    max_depth: int = 5,
+    max_depth: int = 2,
+    max_files: int | None = None,
+    path_filter: str | None = None,
     service_account_info: dict[str, Any] | str | None = None,
 ) -> list[dict[str, str]]:
     """List PDF files in the configured Google Drive folder.
@@ -192,7 +195,16 @@ def list_drive_pdfs(
     """
     folder_id = get_drive_folder_id(folder_id)
     service = get_drive_service(service_account_info)
-    return _list_drive_pdfs_with_service(service, folder_id, recursive, max_depth, path="", visited=set())
+    return _list_drive_pdfs_with_service(
+        service,
+        folder_id,
+        recursive,
+        max_depth,
+        path="",
+        visited=set(),
+        max_files=max_files,
+        path_filter=path_filter,
+    )
 
 
 def _list_drive_pdfs_with_service(
@@ -202,6 +214,8 @@ def _list_drive_pdfs_with_service(
     max_depth: int,
     path: str,
     visited: set[str],
+    max_files: int | None = None,
+    path_filter: str | None = None,
 ) -> list[dict[str, str]]:
     """List PDFs using an existing Drive service instance."""
     try:
@@ -210,9 +224,14 @@ def _list_drive_pdfs_with_service(
         visited.add(folder_id)
 
         children = _list_drive_children(service, folder_id)
+        normalized_filter = (path_filter or "").strip().lower()
         files = [item for item in children if item.get("mimeType") == "application/pdf"]
         for file_info in files:
             file_info["drive_path"] = f"{path}/{file_info['name']}".strip("/")
+        if normalized_filter:
+            files = [item for item in files if normalized_filter in item.get("drive_path", item.get("name", "")).lower()]
+        if max_files is not None:
+            files = files[:max_files]
         if recursive and max_depth > 0:
             folders = [item for item in children if item.get("mimeType") == FOLDER_MIME_TYPE]
             shortcuts = [
@@ -225,6 +244,8 @@ def _list_drive_pdfs_with_service(
                 folders.append(shortcut)
 
             for folder in folders:
+                if max_files is not None and len(files) >= max_files:
+                    break
                 folder_path = f"{path}/{folder['name']}".strip("/")
                 files.extend(
                     _list_drive_pdfs_with_service(
@@ -234,6 +255,8 @@ def _list_drive_pdfs_with_service(
                         max_depth=max_depth - 1,
                         path=folder_path,
                         visited=visited,
+                        max_files=None if max_files is None else max_files - len(files),
+                        path_filter=path_filter,
                     )
                 )
         return files
@@ -279,6 +302,10 @@ def sync_drive_pdfs(
     folder_id: str | None = None,
     dest_dir: Path = PDF_DIR,
     service_account_info: dict[str, Any] | str | None = None,
+    recursive: bool = True,
+    max_depth: int = 2,
+    max_files: int | None = 100,
+    path_filter: str | None = None,
 ) -> dict[str, Any]:
     """Download PDFs from Google Drive into the local PDF folder.
 
@@ -288,7 +315,16 @@ def sync_drive_pdfs(
     ensure_data_dirs()
     folder_id = get_drive_folder_id(folder_id)
     service = get_drive_service(service_account_info)
-    files = _list_drive_pdfs_with_service(service, folder_id, recursive=True, max_depth=5, path="", visited=set())
+    files = _list_drive_pdfs_with_service(
+        service,
+        folder_id,
+        recursive=recursive,
+        max_depth=max_depth,
+        path="",
+        visited=set(),
+        max_files=max_files,
+        path_filter=path_filter,
+    )
     previous_manifest = _manifest_by_file_id()
     downloaded: list[str] = []
     skipped: list[str] = []

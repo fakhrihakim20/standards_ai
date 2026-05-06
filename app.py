@@ -370,6 +370,29 @@ def main() -> None:
             height=120,
             help=t(lang, "drive_json_help"),
         )
+        filter_col, depth_col, limit_col = st.columns(3)
+        drive_path_filter = filter_col.text_input(
+            t(lang, "drive_path_filter"),
+            key="drive_path_filter",
+            help=t(lang, "drive_path_filter_help"),
+        )
+        drive_max_depth = depth_col.number_input(
+            t(lang, "drive_max_depth"),
+            min_value=0,
+            max_value=10,
+            value=2,
+            step=1,
+            help=t(lang, "drive_max_depth_help"),
+        )
+        drive_max_files = limit_col.number_input(
+            t(lang, "drive_max_files"),
+            min_value=0,
+            max_value=10000,
+            value=100,
+            step=50,
+            help=t(lang, "drive_max_files_help"),
+        )
+        drive_recursive = st.checkbox(t(lang, "drive_recursive"), value=True, help=t(lang, "drive_recursive_help"))
         drive_col1, drive_col2 = st.columns(2)
         if drive_col1.button(t(lang, "sync_drive"), type="secondary"):
             try:
@@ -377,6 +400,10 @@ def main() -> None:
                     sync_result = sync_drive_pdfs(
                         folder_id=drive_folder_input or None,
                         service_account_info=get_session_drive_json(),
+                        recursive=drive_recursive,
+                        max_depth=int(drive_max_depth),
+                        max_files=None if int(drive_max_files) == 0 else int(drive_max_files),
+                        path_filter=drive_path_filter or None,
                     )
                 drive_col2.metric(t(lang, "drive_pdfs_found"), sync_result["available"])
                 st.success(
