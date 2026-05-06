@@ -123,6 +123,14 @@ server_metadata_url = "https://accounts.google.com/.well-known/openid-configurat
 client_kwargs = { "scope" = "openid email profile" }
 ```
 
+On Streamlit Community Cloud, the actual callback URL may include Streamlit's hosted path prefix:
+
+```text
+https://your-streamlit-app.streamlit.app/~/+/oauth2callback
+```
+
+If Google redirects back to a URL with `/~/+/oauth2callback`, use that exact URL in both Streamlit secrets and Google Cloud Authorized redirect URIs.
+
 The app downloads PDFs from Drive into temporary local storage, then builds the local JSONL index. It still does not send full PDFs to Gemini.
 
 For saving defaults and OCR/index cache back to Drive, share the Drive folder with the service account as **Editor**. Viewer access is enough for reading PDFs, but not enough for writing cache/settings files.
