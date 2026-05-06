@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
+from googleapiclient.errors import HttpError
 
 from .drive_storage import (
     GoogleDriveConfigError,
@@ -75,6 +76,18 @@ def _index_folder(service, root_folder_id: str) -> str:
     return ensure_child_folder(service, cache_id, INDEX_CACHE_FOLDER_NAME)
 
 
+def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
+    """Return a user-actionable error for common Drive permission failures."""
+    if exc.resp.status in {401, 403, 404}:
+        return CloudStoreError(
+            "Google Drive cache folder is not accessible by the service account. "
+            f"Share the Drive folder `{folder_id}` with the service account email as Editor, "
+            "then try again. If the folder is in a Shared Drive, make sure the service account "
+            "is a member of that Shared Drive."
+        )
+    return CloudStoreError(str(exc))
+
+
 def save_user_settings(email: str, settings: dict[str, Any], folder_id: str | None = None, service_account_info: Any = None) -> None:
     """Encrypt and save per-user defaults in Google Drive."""
     if not email:
@@ -115,6 +128,7 @@ def load_user_settings(email: str, folder_id: str | None = None, service_account
 
 def save_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, int]:
     """Save local OCR/search index files to Google Drive as a lightweight cloud database."""
+    root_folder_id = ""
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
@@ -126,12 +140,15 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
         upload_text_file(service, index_folder, "standards_index.json", standards_text, mime_type="application/json")
         upload_text_file(service, index_folder, "drive_manifest.json", drive_manifest_text, mime_type="application/json")
         return {"chunks": len(read_jsonl(CHUNKS_PATH)), "standards": len(json.loads(standards_text))}
+    except HttpError as exc:
+        raise _drive_permission_help(exc, root_folder_id) from exc
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
 
 
 def load_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, int]:
     """Load cached OCR/search index files from Google Drive into local JSONL/JSON."""
+    root_folder_id = ""
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
@@ -149,5 +166,7 @@ def load_index_cache(folder_id: str | None = None, service_account_info: Any = N
         return {"chunks": len(rows), "standards": len(standards)}
     except CloudStoreError:
         raise
+    except HttpError as exc:
+        raise _drive_permission_help(exc, root_folder_id) from exc
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc

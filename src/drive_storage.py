@@ -124,6 +124,8 @@ def _list_drive_children(service, folder_id: str, mime_type: str | None = None) 
                 pageToken=page_token,
                 orderBy="name",
                 pageSize=1000,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
             )
             .execute()
         )
@@ -139,7 +141,17 @@ def find_child(service, parent_id: str, name: str, mime_type: str | None = None)
     mime_clause = f" and mimeType = '{mime_type}'" if mime_type else ""
     escaped_name = name.replace("'", "\\'")
     query = f"'{parent_id}' in parents and name = '{escaped_name}' and trashed = false{mime_clause}"
-    response = service.files().list(q=query, fields="files(id, name, mimeType)", pageSize=1).execute()
+    response = (
+        service.files()
+        .list(
+            q=query,
+            fields="files(id, name, mimeType)",
+            pageSize=1,
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
     files = response.get("files", [])
     return files[0] if files else None
 
@@ -150,7 +162,7 @@ def ensure_child_folder(service, parent_id: str, name: str) -> str:
     if existing:
         return existing["id"]
     metadata = {"name": name, "mimeType": FOLDER_MIME_TYPE, "parents": [parent_id]}
-    folder = service.files().create(body=metadata, fields="id").execute()
+    folder = service.files().create(body=metadata, fields="id", supportsAllDrives=True).execute()
     return folder["id"]
 
 
@@ -159,10 +171,14 @@ def upload_text_file(service, parent_id: str, name: str, content: str, mime_type
     media = MediaIoBaseUpload(io.BytesIO(content.encode("utf-8")), mimetype=mime_type, resumable=False)
     existing = find_child(service, parent_id, name)
     if existing:
-        updated = service.files().update(fileId=existing["id"], media_body=media, fields="id").execute()
+        updated = (
+            service.files()
+            .update(fileId=existing["id"], media_body=media, fields="id", supportsAllDrives=True)
+            .execute()
+        )
         return updated["id"]
     metadata = {"name": name, "parents": [parent_id], "mimeType": mime_type}
-    created = service.files().create(body=metadata, media_body=media, fields="id").execute()
+    created = service.files().create(body=metadata, media_body=media, fields="id", supportsAllDrives=True).execute()
     return created["id"]
 
 
@@ -171,7 +187,7 @@ def download_text_file(service, parent_id: str, name: str) -> str | None:
     existing = find_child(service, parent_id, name)
     if not existing:
         return None
-    request = service.files().get_media(fileId=existing["id"])
+    request = service.files().get_media(fileId=existing["id"], supportsAllDrives=True)
     buffer = io.BytesIO()
     downloader = MediaIoBaseDownload(buffer, request)
     done = False
@@ -353,7 +369,7 @@ def sync_drive_pdfs(
                 skipped.append(str(local_relative_path))
                 locations.append(location)
                 continue
-            request = service.files().get_media(fileId=file_id)
+            request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
             buffer = io.BytesIO()
             downloader = MediaIoBaseDownload(buffer, request)
             done = False
