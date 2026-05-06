@@ -116,20 +116,20 @@ GOOGLE_SERVICE_ACCOUNT_JSON = """
 
 [auth]
 redirect_uri = "https://your-streamlit-app.streamlit.app/oauth2callback"
-cookie_secret = "generate_a_long_random_string"
+cookie_secret = "generate_a_long_random_string_and_keep_it_stable"
 client_id = "your_google_oauth_client_id"
 client_secret = "your_google_oauth_client_secret"
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 client_kwargs = { "scope" = "openid email profile" }
 ```
 
-On Streamlit Community Cloud, the actual callback URL may include Streamlit's hosted path prefix:
+If Google login returns `Internal server error` and the log says `MismatchingStateError: CSRF Warning! State not equal in request and response`, check these first:
 
-```text
-https://your-streamlit-app.streamlit.app/~/+/oauth2callback
-```
-
-If Google redirects back to a URL with `/~/+/oauth2callback`, use that exact URL in both Streamlit secrets and Google Cloud Authorized redirect URIs.
+1. `redirect_uri` in Streamlit secrets must exactly match the Google Cloud Authorized redirect URI.
+2. Use `https://your-streamlit-app.streamlit.app/oauth2callback` for Streamlit Community Cloud.
+3. Keep `cookie_secret` stable; do not regenerate it between deploys unless users clear site cookies.
+4. Clear browser cookies for the deployed Streamlit app after changing `[auth]` secrets.
+5. Start one fresh login flow in one tab; old callback URLs from earlier attempts can reuse stale OAuth state.
 
 The app downloads PDFs from Drive into temporary local storage, then builds the local JSONL index. It still does not send full PDFs to Gemini.
 
@@ -150,6 +150,8 @@ The app supports Google login through Streamlit's native OIDC login. Configure t
 ```text
 https://your-streamlit-app.streamlit.app/oauth2callback
 ```
+
+The repository pins Streamlit's auth extra and Python 3.12 for cloud deployment so OAuth behavior is not affected by newest-runtime changes.
 
 If `[auth]` is missing, the app shows a login configuration warning instead of silently entering guest mode. For local development only, set:
 
