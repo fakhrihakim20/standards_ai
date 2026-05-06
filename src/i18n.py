@@ -9,7 +9,7 @@ LANGUAGES = {
 
 TRANSLATIONS = {
     "id": {
-        "app_title": "Asisten Standar IEEE–IEC–SPLN",
+        "app_title": "StandardsAtlas",
         "login_required": "Masuk diperlukan",
         "login_intro": "Masuk dengan akun Google untuk memakai asisten dan menyimpan pengaturan default per akun.",
         "login_google": "Masuk dengan Google",
@@ -147,7 +147,7 @@ TRANSLATIONS = {
         ),
     },
     "en": {
-        "app_title": "IEEE–IEC–SPLN Standards Assistant",
+        "app_title": "StandardsAtlas",
         "login_required": "Login required",
         "login_intro": "Sign in with Google to use the assistant and save per-account defaults.",
         "login_google": "Sign in with Google",

@@ -446,8 +446,8 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
         f"""
         <div class="pp-workspace-header">
           <div>
-            <div class="pp-kicker">Material You standards home</div>
-            <div class="pp-title">{t(lang, "app_title")}</div>
+            <div class="pp-kicker">Engineering Docs, Simplified</div>
+            <div class="pp-title">StandardsAtlas</div>
           </div>
           <div class="pp-token-row">
             <span>PDF</span><span>OCR</span><span>JSONL</span><span>Gemini</span>
@@ -547,9 +547,14 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
 
         .stButton > button[kind="primary"] {{
           background: {palette["primary"]} !important;
-          color: {palette["primary_text"]} !important;
+          color: #ffffff !important;
           border-color: transparent !important;
           box-shadow: 0 10px 24px rgba(40, 85, 113, 0.22) !important;
+        }}
+
+        .stButton > button[kind="primary"] *,
+        .stButton > button[kind="primary"] p {{
+          color: #ffffff !important;
         }}
 
         .stTextInput input,
