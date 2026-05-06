@@ -120,6 +120,48 @@ def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
     return CloudStoreError(str(exc))
 
 
+def diagnose_index_cache_folder(folder_id: str | None = None, service_account_info: Any = None, write_test: bool = False) -> dict[str, Any]:
+    """Return Drive API capabilities for the selected cache folder."""
+    root_folder_id = ""
+    try:
+        service = get_drive_service(service_account_info)
+        root_folder_id = get_drive_folder_id(folder_id)
+        folder = (
+            service.files()
+            .get(
+                fileId=root_folder_id,
+                fields=(
+                    "id,name,mimeType,driveId,capabilities(canAddChildren,canEdit,"
+                    "canListChildren,canDeleteChildren,canShare)"
+                ),
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+        result: dict[str, Any] = {
+            "folder_id": root_folder_id,
+            "name": folder.get("name", ""),
+            "mimeType": folder.get("mimeType", ""),
+            "driveId": folder.get("driveId", ""),
+            "capabilities": folder.get("capabilities", {}),
+        }
+        if write_test:
+            test_name = ".standards_ai_write_test.txt"
+            test_id = upload_text_file(service, root_folder_id, test_name, "ok", mime_type="text/plain")
+            result["write_test"] = "ok"
+            result["write_test_file_id"] = test_id
+            try:
+                service.files().delete(fileId=test_id, supportsAllDrives=True).execute()
+                result["delete_test"] = "ok"
+            except HttpError as exc:
+                result["delete_test"] = f"failed: {exc}"
+        return result
+    except HttpError as exc:
+        raise _drive_permission_help(exc, root_folder_id) from exc
+    except Exception as exc:
+        raise CloudStoreError(str(exc)) from exc
+
+
 def save_user_settings(email: str, settings: dict[str, Any], folder_id: str | None = None, service_account_info: Any = None) -> None:
     """Encrypt and save per-user defaults in Google Drive."""
     if not email:

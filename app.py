@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 from src.cloud_store import (
     CloudStoreError,
     MissingEncryptionKeyError,
+    diagnose_index_cache_folder,
     load_index_cache,
     load_user_settings,
     save_index_cache,
@@ -472,6 +473,21 @@ def main() -> None:
         cache_folder_id = cache_folder_input or drive_folder_input or None
         if cache_folder_id:
             st.caption(f"{t(lang, 'cache_folder_target')}: `{cache_folder_id}`")
+        if st.button(t(lang, "test_cache_folder")):
+            try:
+                diagnostic = diagnose_index_cache_folder(
+                    folder_id=cache_folder_id,
+                    service_account_info=get_session_drive_json(),
+                    write_test=True,
+                )
+                st.json(diagnostic)
+                capabilities = diagnostic.get("capabilities", {})
+                if not capabilities.get("canAddChildren"):
+                    st.warning(t(lang, "cache_folder_no_write"))
+                elif diagnostic.get("write_test") == "ok":
+                    st.success(t(lang, "cache_folder_write_ok"))
+            except CloudStoreError as exc:
+                st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
         cache_col1, cache_col2 = st.columns(2)
         if cache_col1.button(t(lang, "load_index_cache")):
             try:
