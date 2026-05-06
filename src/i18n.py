@@ -1,0 +1,184 @@
+from __future__ import annotations
+
+
+LANGUAGES = {
+    "id": "Bahasa Indonesia",
+    "en": "English",
+}
+
+
+TRANSLATIONS = {
+    "id": {
+        "app_title": "Asisten Standar IEEE–IEC–SPLN",
+        "index_pdfs": "Indeks PDF",
+        "search": "Pencarian",
+        "ask": "Tanya Standar",
+        "compare": "Bandingkan IEC vs IEEE vs SPLN",
+        "settings": "Pengaturan / Tentang",
+        "question": "Pertanyaan",
+        "comparison_topic": "Topik perbandingan",
+        "body_filter": "Filter badan standar",
+        "num_excerpts": "Jumlah cuplikan",
+        "rebuild_index": "Bangun Ulang Indeks",
+        "sync_drive": "Sinkronkan dari Google Drive",
+        "search_button": "Cari",
+        "ask_gemini": "Tanya Gemini",
+        "compare_button": "Bandingkan Standar",
+        "language": "Bahasa",
+        "gemini_model": "Model Gemini",
+        "data_folder": "Folder data",
+        "privacy": "Privasi: hanya cuplikan terpilih yang dikirim ke Gemini, bukan PDF penuh.",
+        "pdfs_found": "PDF ditemukan",
+        "drive_pdfs_found": "PDF di Google Drive",
+        "index_status": "Status indeks",
+        "standards_indexed": "Standar terindeks",
+        "chunks_created": "Cuplikan dibuat",
+        "warnings": "Peringatan",
+        "drive_sync": "Sinkronisasi Google Drive",
+        "drive_sync_success": "PDF berhasil disinkronkan dari Google Drive.",
+        "drive_sync_help": "Gunakan folder Google Drive yang dibagikan ke service account.",
+        "drive_config_missing": "Konfigurasi Google Drive belum lengkap. Periksa GOOGLE_DRIVE_FOLDER_ID dan kredensial service account.",
+        "drive_error": "Terjadi kesalahan saat mengakses Google Drive",
+        "downloaded_files": "File diunduh",
+        "no_pdfs": "Belum ada PDF di folder data/pdfs/.",
+        "no_index": "Indeks belum dibuat.",
+        "index_exists": "Indeks tersedia.",
+        "empty_query": "Masukkan pertanyaan atau kata kunci terlebih dahulu.",
+        "no_results": "Tidak ada cuplikan relevan yang ditemukan.",
+        "retrieved_sources": "Sumber yang diambil",
+        "grouped_evidence": "Bukti berdasarkan badan standar",
+        "score": "Skor",
+        "body": "Badan",
+        "standard": "Standar",
+        "source_file": "File sumber",
+        "clause": "Klausul/Bagian",
+        "page": "Halaman",
+        "answer": "Jawaban",
+        "about_text": (
+            "Aplikasi ini untuk penggunaan privat/internal dengan dokumen yang Anda berhak akses. "
+            "Ekstraksi PDF dan indeks JSONL berjalan lokal. Aplikasi hanya mengirim cuplikan hasil pencarian ke Gemini, "
+            "bukan PDF penuh. Jawaban tidak menggantikan standar resmi; verifikasi kembali pada dokumen resmi. "
+            "Jangan mempublikasikan teks standar berhak cipta secara publik."
+        ),
+        "topic_helpers": "Topik cepat",
+        "selected_bodies": "Badan standar yang dibandingkan",
+        "missing_api": "GEMINI_API_KEY belum tersedia. Periksa file .env.",
+        "gemini_error": "Terjadi kesalahan saat menghubungi Gemini",
+        "data_paths_note": (
+            "data/pdfs/ -> PDF standar\n"
+            "data/index/chunks.jsonl -> basis data cuplikan\n"
+            "data/index/standards_index.json -> metadata PDF"
+        ),
+    },
+    "en": {
+        "app_title": "IEEE–IEC–SPLN Standards Assistant",
+        "index_pdfs": "Index PDFs",
+        "search": "Search",
+        "ask": "Ask Standards",
+        "compare": "Compare IEC vs IEEE vs SPLN",
+        "settings": "Settings / About",
+        "question": "Question",
+        "comparison_topic": "Comparison topic",
+        "body_filter": "Standard body filter",
+        "num_excerpts": "Number of excerpts",
+        "rebuild_index": "Rebuild Index",
+        "sync_drive": "Sync from Google Drive",
+        "search_button": "Search",
+        "ask_gemini": "Ask Gemini",
+        "compare_button": "Compare Standards",
+        "language": "Language",
+        "gemini_model": "Gemini model",
+        "data_folder": "Data folder",
+        "privacy": "Privacy: only selected excerpts are sent to Gemini, not full PDFs.",
+        "pdfs_found": "PDFs found",
+        "drive_pdfs_found": "PDFs in Google Drive",
+        "index_status": "Index status",
+        "standards_indexed": "Standards indexed",
+        "chunks_created": "Excerpts created",
+        "warnings": "Warnings",
+        "drive_sync": "Google Drive sync",
+        "drive_sync_success": "PDFs synced from Google Drive.",
+        "drive_sync_help": "Use a Google Drive folder shared with the service account.",
+        "drive_config_missing": "Google Drive configuration is incomplete. Check GOOGLE_DRIVE_FOLDER_ID and service account credentials.",
+        "drive_error": "Google Drive access error",
+        "downloaded_files": "Downloaded files",
+        "no_pdfs": "No PDFs found in data/pdfs/ yet.",
+        "no_index": "Index has not been built yet.",
+        "index_exists": "Index exists.",
+        "empty_query": "Enter a question or keyword first.",
+        "no_results": "No relevant excerpts found.",
+        "retrieved_sources": "Retrieved sources",
+        "grouped_evidence": "Evidence by standards body",
+        "score": "Score",
+        "body": "Body",
+        "standard": "Standard",
+        "source_file": "Source file",
+        "clause": "Clause/Section",
+        "page": "Page",
+        "answer": "Answer",
+        "about_text": (
+            "This app is for private/internal use with documents you have rights to access. "
+            "PDF extraction and JSONL indexing run locally. The app sends only retrieved excerpts to Gemini, "
+            "not full PDFs. Answers do not replace official standards; verify against official documents. "
+            "Do not publish copyrighted standards text publicly."
+        ),
+        "topic_helpers": "Quick topics",
+        "selected_bodies": "Standards bodies to compare",
+        "missing_api": "GEMINI_API_KEY is missing. Check your .env file.",
+        "gemini_error": "Gemini API error",
+        "data_paths_note": (
+            "data/pdfs/ -> PDF standards\n"
+            "data/index/chunks.jsonl -> excerpt database\n"
+            "data/index/standards_index.json -> PDF metadata"
+        ),
+    },
+}
+
+
+TOPIC_CHIPS = {
+    "id": [
+        ("Interpretasi DGA", "DGA interpretation"),
+        ("Metode rasio gas", "gas ratio method"),
+        ("Metode key gas", "key gas method"),
+        ("Penuaan kertas isolasi transformator", "transformer paper ageing"),
+        ("Kadar air dalam minyak", "moisture in oil"),
+        ("Pembebanan dan temperatur", "loading and temperature"),
+        ("Tindakan pemeliharaan", "maintenance action"),
+        ("Tingkat keparahan gangguan", "fault severity"),
+        ("Gangguan termal", "thermal fault"),
+        ("Partial discharge", "partial discharge"),
+        ("Arcing fault", "arcing fault"),
+        ("Dissolved gas analysis", "dissolved gas analysis"),
+        ("Kualitas minyak", "oil quality"),
+        ("Penuaan isolasi", "insulation ageing"),
+        ("Rasio CO dan CO2", "CO and CO2 ratio"),
+        ("Acetylene", "acetylene"),
+        ("Ethylene", "ethylene"),
+        ("Hydrogen", "hydrogen"),
+    ],
+    "en": [
+        ("DGA interpretation", "DGA interpretation"),
+        ("gas ratio method", "gas ratio method"),
+        ("key gas method", "key gas method"),
+        ("transformer paper ageing", "transformer paper ageing"),
+        ("moisture in oil", "moisture in oil"),
+        ("loading and temperature", "loading and temperature"),
+        ("maintenance action", "maintenance action"),
+        ("fault severity", "fault severity"),
+        ("thermal fault", "thermal fault"),
+        ("partial discharge", "partial discharge"),
+        ("arcing fault", "arcing fault"),
+        ("dissolved gas analysis", "dissolved gas analysis"),
+        ("oil quality", "oil quality"),
+        ("insulation ageing", "insulation ageing"),
+        ("CO and CO2 ratio", "CO and CO2 ratio"),
+        ("acetylene", "acetylene"),
+        ("ethylene", "ethylene"),
+        ("hydrogen", "hydrogen"),
+    ],
+}
+
+
+def t(lang: str, key: str) -> str:
+    """Translate a UI key, defaulting to Bahasa Indonesia."""
+    return TRANSLATIONS.get(lang, TRANSLATIONS["id"]).get(key, key)
