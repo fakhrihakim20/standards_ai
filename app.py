@@ -148,6 +148,10 @@ def apply_material_you_theme(theme_mode: str) -> None:
 
         .stTabs [data-baseweb="tab-list"] {
           gap: 6px;
+          width: fit-content;
+          max-width: 100%;
+          margin: 0 auto 8px auto;
+          justify-content: center;
           border-bottom: 0;
           background: var(--pp-panel);
           padding: 8px;
@@ -587,6 +591,10 @@ def render_workspace_header(lang: str, theme_mode: str) -> None:
           border-radius: 999px !important;
           background: {palette["surface"]} !important;
           border: 0 !important;
+          width: fit-content !important;
+          max-width: 100% !important;
+          margin: 0 auto 12px auto !important;
+          justify-content: center !important;
           box-shadow: {palette["shadow"]};
         }}
 
