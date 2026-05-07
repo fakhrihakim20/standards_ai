@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import json
 import os
+import base64
 from pathlib import Path
 
 import pandas as pd
@@ -38,6 +39,17 @@ from src.utils import (
     reset_user_cache,
     write_json,
 )
+
+APP_LOGO_PATH = Path(__file__).parent / "assets" / "standardsatlas-logo.png"
+
+
+def logo_data_uri() -> str:
+    """Return the official app logo as a browser-safe data URI."""
+    try:
+        encoded = base64.b64encode(APP_LOGO_PATH.read_bytes()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except Exception:
+        return ""
 
 
 def apply_material_you_theme(theme_mode: str) -> None:
@@ -312,6 +324,32 @@ def apply_material_you_theme(theme_mode: str) -> None:
           box-shadow: var(--pp-shadow);
         }
 
+        .pp-brand-block {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .pp-logo {
+          width: 58px;
+          height: 58px;
+          flex: 0 0 auto;
+          border-radius: 18px;
+          object-fit: cover;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+        }
+
+        .pp-sidebar-logo {
+          width: 72px;
+          height: 72px;
+          border-radius: 22px;
+          object-fit: cover;
+          display: block;
+          margin: 0 0 12px 0;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+        }
+
         .pp-kicker {
           color: var(--pp-cyan);
           font-size: 12px;
@@ -352,6 +390,12 @@ def apply_material_you_theme(theme_mode: str) -> None:
           .pp-workspace-header {
             align-items: flex-start;
             flex-direction: column;
+          }
+
+          .pp-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 16px;
           }
 
           .pp-token-row {
@@ -469,12 +513,17 @@ def update_status(status, label: str, state: str = "running") -> None:
 
 def render_workspace_header(lang: str, theme_mode: str) -> None:
     """Render a compact Material You inspired workspace header."""
+    logo_uri = logo_data_uri()
+    logo_html = f'<img class="pp-logo" src="{logo_uri}" alt="StandardsAtlas logo" />' if logo_uri else ""
     st.markdown(
         f"""
         <div class="pp-workspace-header">
-          <div>
-            <div class="pp-kicker">Engineering Docs, Simplified</div>
-            <div class="pp-title">StandardsAtlas</div>
+          <div class="pp-brand-block">
+            {logo_html}
+            <div>
+              <div class="pp-kicker">Engineering Docs, Simplified</div>
+              <div class="pp-title">StandardsAtlas</div>
+            </div>
           </div>
           <div class="pp-token-row">
             <span>PDF</span><span>OCR</span><span>JSONL</span><span>Gemini</span>
@@ -890,7 +939,7 @@ def save_defaults_from_session(lang: str, silent: bool = False) -> None:
 def main() -> None:
     load_dotenv()
     ensure_data_dirs()
-    st.set_page_config(page_title=t("id", "app_title"), layout="wide")
+    st.set_page_config(page_title=t("id", "app_title"), page_icon=str(APP_LOGO_PATH), layout="wide")
     theme_mode = st.session_state.get("theme_mode", "day")
     apply_material_you_theme(theme_mode)
 
@@ -923,6 +972,12 @@ def main() -> None:
             login_screen(lang)
             st.stop()
 
+    sidebar_logo_uri = logo_data_uri()
+    if sidebar_logo_uri:
+        st.sidebar.markdown(
+            f'<img class="pp-sidebar-logo" src="{sidebar_logo_uri}" alt="StandardsAtlas logo" />',
+            unsafe_allow_html=True,
+        )
     st.sidebar.title(t(lang, "app_title"))
     st.sidebar.write(f"**{t(lang, 'logged_in_as')}:** {current_user_name()}")
     user_email = current_user_email()
