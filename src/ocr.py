@@ -120,7 +120,10 @@ def ocr_pdf_page(page: fitz.Page, language: str = "eng+ind", dpi: int = 220, eng
     try:
         if engine == "tesseract":
             return _tesseract_ocr_image(image_path, language)
-        return _paddle_ocr_image(image_path)
+        try:
+            return _paddle_ocr_image(image_path)
+        except OcrUnavailableError:
+            return _tesseract_ocr_image(image_path, language)
     finally:
         try:
             image_path.unlink(missing_ok=True)
