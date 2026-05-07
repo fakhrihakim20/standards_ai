@@ -52,6 +52,11 @@ def logo_data_uri() -> str:
         return ""
 
 
+def page_icon() -> str:
+    """Return a safe Streamlit page icon."""
+    return "🌐"
+
+
 def apply_material_you_theme(theme_mode: str) -> None:
     """Apply a Material You New Tab inspired day/night visual theme."""
     st.markdown(
@@ -939,7 +944,7 @@ def save_defaults_from_session(lang: str, silent: bool = False) -> None:
 def main() -> None:
     load_dotenv()
     ensure_data_dirs()
-    st.set_page_config(page_title=t("id", "app_title"), page_icon=str(APP_LOGO_PATH), layout="wide")
+    st.set_page_config(page_title=t("id", "app_title"), page_icon=page_icon(), layout="wide")
     theme_mode = st.session_state.get("theme_mode", "day")
     apply_material_you_theme(theme_mode)
 
