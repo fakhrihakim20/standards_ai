@@ -95,6 +95,14 @@ def _find_settings_folder(service, root_folder_id: str) -> str | None:
 
 def _settings_folder_for_save(service, root_folder_id: str, filename: str) -> tuple[str, str]:
     """Return a folder for settings save, falling back to pre-created root files."""
+    try:
+        settings_folder = _find_settings_folder(service, root_folder_id)
+    except HttpError as exc:
+        if exc.resp.status not in {403, 404}:
+            raise
+        settings_folder = None
+    if settings_folder and find_child(service, settings_folder, filename):
+        return settings_folder, "nested"
     if find_child(service, root_folder_id, filename):
         return root_folder_id, "root"
     try:
@@ -305,6 +313,19 @@ def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
     return CloudStoreError(str(exc))
 
 
+def _settings_quota_help(exc: HttpError, filename: str) -> CloudStoreError:
+    """Return a user-actionable error for default settings save quota failures."""
+    error_text = str(exc)
+    if "storageQuotaExceeded" in error_text or "Service Accounts do not have storage quota" in error_text:
+        return CloudStoreError(
+            "Google Drive rejected creating the per-user defaults file because service accounts "
+            "do not have storage quota in a regular My Drive folder. Create an empty text file named "
+            f"`{filename}` in the selected Drive folder, share it with the service account as Editor, "
+            "then click Simpan default saya again. Alternatively use a Shared Drive."
+        )
+    return _drive_permission_help(exc, "")
+
+
 def diagnose_index_cache_folder(folder_id: str | None = None, service_account_info: Any = None, write_test: bool = False) -> dict[str, Any]:
     """Return Drive API capabilities for the selected cache folder."""
     root_folder_id = ""
@@ -397,11 +418,14 @@ def save_user_settings(email: str, settings: dict[str, Any], folder_id: str | No
             )
         payload = json.dumps(settings, ensure_ascii=False)
         encrypted = _fernet().encrypt(payload.encode("utf-8")).decode("utf-8")
-        upload_text_file(service, settings_folder, filename, encrypted, mime_type="text/plain")
+        try:
+            upload_text_file(service, settings_folder, filename, encrypted, mime_type="text/plain")
+        except HttpError as exc:
+            raise _settings_quota_help(exc, filename) from exc
     except (GoogleDriveConfigError, MissingEncryptionKeyError):
         raise
     except HttpError as exc:
-        raise _drive_permission_help(exc, root_folder_id) from exc
+        raise _settings_quota_help(exc, user_settings_filename(email)) from exc
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
 
