@@ -810,14 +810,20 @@ def service_account_email_from_json(raw_json: str | None) -> str:
 def load_defaults_to_session(lang: str, silent: bool = False) -> None:
     """Load encrypted per-user defaults from Drive into session state."""
     email = current_user_email()
+    fallback_folder_id = st.session_state.get("drive_folder_input") or None
+    fallback_service_account = get_session_drive_json()
     try:
         try:
             settings = load_user_settings(email)
         except (GoogleDriveConfigError, CloudStoreError):
+            if not fallback_folder_id or not fallback_service_account:
+                if not silent:
+                    st.toast(t(lang, "drive_config_missing"))
+                return
             settings = load_user_settings(
                 email,
-                folder_id=st.session_state.get("drive_folder_input") or None,
-                service_account_info=get_session_drive_json(),
+                folder_id=fallback_folder_id,
+                service_account_info=fallback_service_account,
             )
         if not settings:
             if not silent:
@@ -837,6 +843,9 @@ def load_defaults_to_session(lang: str, silent: bool = False) -> None:
     except CloudStoreError as exc:
         if not silent:
             st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
+    except GoogleDriveConfigError:
+        if not silent:
+            st.toast(t(lang, "drive_config_missing"))
 
 
 def save_defaults_from_session(lang: str, silent: bool = False) -> None:
@@ -855,6 +864,10 @@ def save_defaults_from_session(lang: str, silent: bool = False) -> None:
         try:
             save_user_settings(current_user_email(), settings)
         except (GoogleDriveConfigError, CloudStoreError):
+            if not settings["drive_folder"] or not raw_drive_json:
+                if not silent:
+                    st.toast(t(lang, "drive_config_missing"))
+                return
             save_user_settings(
                 current_user_email(),
                 settings,
@@ -869,6 +882,9 @@ def save_defaults_from_session(lang: str, silent: bool = False) -> None:
     except CloudStoreError as exc:
         if not silent:
             st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
+    except GoogleDriveConfigError:
+        if not silent:
+            st.toast(t(lang, "drive_config_missing"))
 
 
 def main() -> None:
