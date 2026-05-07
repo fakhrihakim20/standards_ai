@@ -84,6 +84,40 @@ def _settings_folder(service, root_folder_id: str) -> str:
     return ensure_child_folder(service, cache_id, USER_SETTINGS_FOLDER_NAME)
 
 
+def _find_settings_folder(service, root_folder_id: str) -> str | None:
+    """Find the nested user settings folder without creating missing folders."""
+    cache_folder = find_child(service, root_folder_id, CACHE_FOLDER_NAME)
+    if not cache_folder:
+        return None
+    settings_folder = find_child(service, cache_folder["id"], USER_SETTINGS_FOLDER_NAME)
+    return settings_folder["id"] if settings_folder else None
+
+
+def _settings_folder_for_save(service, root_folder_id: str, filename: str) -> tuple[str, str]:
+    """Return a folder for settings save, falling back to pre-created root files."""
+    if find_child(service, root_folder_id, filename):
+        return root_folder_id, "root"
+    try:
+        return _settings_folder(service, root_folder_id), "nested"
+    except HttpError as exc:
+        if exc.resp.status in {403, 404}:
+            return root_folder_id, "root"
+        raise
+
+
+def _settings_folder_for_load(service, root_folder_id: str, filename: str) -> tuple[str, str]:
+    """Return a folder for settings load without requiring create permission."""
+    try:
+        settings_folder = _find_settings_folder(service, root_folder_id)
+    except HttpError as exc:
+        if exc.resp.status not in {403, 404}:
+            raise
+        settings_folder = None
+    if settings_folder and find_child(service, settings_folder, filename):
+        return settings_folder, "nested"
+    return root_folder_id, "root"
+
+
 def _index_folder(service, root_folder_id: str) -> str:
     cache_id = _cache_folder(service, root_folder_id)
     return ensure_child_folder(service, cache_id, INDEX_CACHE_FOLDER_NAME)
@@ -254,10 +288,11 @@ def _drive_permission_help(exc: HttpError, folder_id: str) -> CloudStoreError:
     error_text = str(exc)
     if "storageQuotaExceeded" in error_text or "Service Accounts do not have storage quota" in error_text:
         return CloudStoreError(
-            "Google Drive rejected creating a new cache file because service accounts do not have "
+            "Google Drive rejected creating a new file because service accounts do not have "
             "storage quota in a regular My Drive folder. Use a Shared Drive for the cache folder, "
-            "or manually create these files in the selected cache folder first so the app can update "
-            "them instead of creating them: chunks.jsonl, standards_index.json, drive_manifest.json."
+            "or manually create the needed files in the selected folder first so the app can update "
+            "them instead of creating them. For OCR/index cache: chunks.jsonl, standards_index.json, "
+            "drive_manifest.json. For per-user defaults, create the filename shown in the app error."
         )
     if exc.resp.status in {401, 403, 404}:
         return CloudStoreError(
@@ -352,12 +387,21 @@ def save_user_settings(email: str, settings: dict[str, Any], folder_id: str | No
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
-        settings_folder = _settings_folder(service, root_folder_id)
+        filename = user_settings_filename(email)
+        settings_folder, settings_location = _settings_folder_for_save(service, root_folder_id, filename)
+        if settings_location == "root" and not find_child(service, settings_folder, filename):
+            raise CloudStoreError(
+                "Google Drive cannot create the per-user defaults file in this My Drive folder. "
+                f"Create an empty text file named `{filename}` in the selected Drive folder first, "
+                "or use a Shared Drive, then click Simpan default saya again."
+            )
         payload = json.dumps(settings, ensure_ascii=False)
         encrypted = _fernet().encrypt(payload.encode("utf-8")).decode("utf-8")
-        upload_text_file(service, settings_folder, user_settings_filename(email), encrypted, mime_type="text/plain")
+        upload_text_file(service, settings_folder, filename, encrypted, mime_type="text/plain")
     except (GoogleDriveConfigError, MissingEncryptionKeyError):
         raise
+    except HttpError as exc:
+        raise _drive_permission_help(exc, root_folder_id) from exc
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
 
@@ -369,8 +413,9 @@ def load_user_settings(email: str, folder_id: str | None = None, service_account
     try:
         service = get_drive_service(service_account_info)
         root_folder_id = get_drive_folder_id(folder_id)
-        settings_folder = _settings_folder(service, root_folder_id)
-        encrypted = download_text_file(service, settings_folder, user_settings_filename(email))
+        filename = user_settings_filename(email)
+        settings_folder, _ = _settings_folder_for_load(service, root_folder_id, filename)
+        encrypted = download_text_file(service, settings_folder, filename)
         if not encrypted:
             return None
         decrypted = _fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
@@ -379,6 +424,8 @@ def load_user_settings(email: str, folder_id: str | None = None, service_account
         raise CloudStoreError("Saved settings could not be decrypted with the current APP_ENCRYPTION_KEY.") from exc
     except (GoogleDriveConfigError, MissingEncryptionKeyError):
         raise
+    except HttpError as exc:
+        raise _drive_permission_help(exc, root_folder_id) from exc
     except Exception as exc:
         raise CloudStoreError(str(exc)) from exc
 
