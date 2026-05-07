@@ -43,7 +43,7 @@ def _paddle_ocr():
         )
     except TypeError:
         try:
-            return PaddleOCR(use_angle_cls=False, lang="en", show_log=False)
+            return PaddleOCR(use_angle_cls=False, lang="en")
         except TypeError as exc:
             raise OcrUnavailableError(f"PaddleOCR initialization failed: {exc}") from exc
     except Exception as exc:
