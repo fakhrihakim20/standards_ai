@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -53,10 +52,24 @@ def ensure_user_data_dirs(email: str) -> dict[str, Path]:
 
 
 def reset_user_cache(email: str) -> None:
-    """Delete local PDFs and OCR/index files for one account."""
-    user_root = user_data_paths(email)["root"]
+    """Delete local PDFs and OCR/index files for one account without crashing on locked folders."""
+    paths = user_data_paths(email)
+    user_root = paths["root"]
     if user_root.exists():
-        shutil.rmtree(user_root)
+        for item in sorted(user_root.rglob("*"), key=lambda path: len(path.parts), reverse=True):
+            try:
+                if item.is_file() or item.is_symlink():
+                    item.unlink(missing_ok=True)
+                elif item.is_dir():
+                    item.rmdir()
+            except OSError:
+                continue
+        for directory in (paths["index_dir"], paths["pdf_dir"], user_root):
+            try:
+                if directory.exists():
+                    directory.rmdir()
+            except OSError:
+                continue
     ensure_user_data_dirs(email)
 
 
