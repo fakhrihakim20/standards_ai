@@ -29,7 +29,7 @@ TRANSLATIONS = {
         "rebuild_index": "Bangun Ulang Indeks",
         "use_ocr": "Gunakan OCR untuk PDF hasil scan",
         "ocr_language": "Bahasa OCR",
-        "ocr_help": "OCR lebih lambat, tetapi diperlukan untuk PDF scan. Tidak mengirim PDF ke Gemini.",
+        "ocr_help": "OCR memakai PaddleOCR. Lebih lambat, tetapi diperlukan untuk PDF scan. Tidak mengirim PDF ke Gemini.",
         "sync_drive": "Sinkronkan dari Google Drive",
         "search_button": "Cari",
         "ask_gemini": "Tanya Gemini",
@@ -60,6 +60,10 @@ TRANSLATIONS = {
         "drive_sync": "Sinkronisasi Google Drive",
         "drive_sync_settings": "Pengaturan sinkronisasi Google Drive",
         "drive_sync_success": "PDF berhasil disinkronkan dari Google Drive.",
+        "drive_sync_status_start": "Menyiapkan sinkronisasi Google Drive",
+        "drive_sync_status_listing": "Membaca daftar PDF dari Google Drive.",
+        "drive_sync_status_found": "PDF ditemukan di Drive",
+        "drive_sync_status_done": "Sinkronisasi Google Drive selesai.",
         "drive_sync_help": "Masukkan link/ID folder Google Drive dan kredensial service account, atau gunakan secrets server.",
         "drive_folder": "Link atau ID folder Google Drive",
         "drive_json_upload": "Upload JSON service account",
@@ -76,8 +80,10 @@ TRANSLATIONS = {
         "drive_locations": "Lokasi PDF di Google Drive",
         "save_index_cache": "Simpan cache OCR/index ke Drive",
         "load_index_cache": "Muat cache OCR/index dari Drive",
+        "reset_cache": "Reset cache",
         "index_cache_saved": "Cache OCR/index berhasil disimpan.",
         "index_cache_loaded": "Cache OCR/index berhasil dimuat.",
+        "cache_reset_done": "Cache lokal akun ini berhasil direset. Bangun ulang indeks untuk membuat cache PaddleOCR baru.",
         "index_cache_help": "Gunakan ini sebagai database cloud gratis berbasis JSONL agar OCR tidak perlu diulang setiap redeploy.",
         "index_cache_folder": "Folder cache OCR/index",
         "index_cache_settings": "Pengaturan cache OCR/index",
@@ -99,6 +105,7 @@ TRANSLATIONS = {
         "cache_marker": "Penanda cache",
         "cache_loaded_marker": "Cache OCR/index terakhir dimuat dari Google Drive.",
         "cache_saved_marker": "Cache OCR/index terakhir disimpan ke Google Drive.",
+        "cache_reset_marker": "Cache lokal akun ini terakhir direset.",
         "cache_location": "Lokasi cache",
         "cache_files_found": "File cache terdeteksi",
         "active_service_account": "Service account aktif",
@@ -142,9 +149,9 @@ TRANSLATIONS = {
         "missing_api": "GEMINI_API_KEY belum tersedia. Periksa file .env.",
         "gemini_error": "Terjadi kesalahan saat menghubungi Gemini",
         "data_paths_note": (
-            "data/pdfs/ -> PDF standar\n"
-            "data/index/chunks.jsonl -> basis data cuplikan\n"
-            "data/index/standards_index.json -> metadata PDF"
+            "data/users/<akun>/pdfs/ -> PDF standar per akun Google\n"
+            "data/users/<akun>/index/chunks.jsonl -> basis data cuplikan per akun\n"
+            "data/users/<akun>/index/standards_index.json -> metadata PDF per akun"
         ),
     },
     "en": {
@@ -168,7 +175,7 @@ TRANSLATIONS = {
         "rebuild_index": "Rebuild Index",
         "use_ocr": "Use OCR for scanned PDFs",
         "ocr_language": "OCR language",
-        "ocr_help": "OCR is slower, but needed for scanned PDFs. It does not send PDFs to Gemini.",
+        "ocr_help": "OCR uses PaddleOCR. It is slower, but needed for scanned PDFs. It does not send PDFs to Gemini.",
         "sync_drive": "Sync from Google Drive",
         "search_button": "Search",
         "ask_gemini": "Ask Gemini",
@@ -199,6 +206,10 @@ TRANSLATIONS = {
         "drive_sync": "Google Drive sync",
         "drive_sync_settings": "Google Drive sync settings",
         "drive_sync_success": "PDFs synced from Google Drive.",
+        "drive_sync_status_start": "Preparing Google Drive sync",
+        "drive_sync_status_listing": "Reading the PDF list from Google Drive.",
+        "drive_sync_status_found": "PDFs found in Drive",
+        "drive_sync_status_done": "Google Drive sync finished.",
         "drive_sync_help": "Enter a Google Drive folder link/ID and service account credentials, or use server secrets.",
         "drive_folder": "Google Drive folder link or ID",
         "drive_json_upload": "Upload service account JSON",
@@ -215,8 +226,10 @@ TRANSLATIONS = {
         "drive_locations": "PDF locations in Google Drive",
         "save_index_cache": "Save OCR/index cache to Drive",
         "load_index_cache": "Load OCR/index cache from Drive",
+        "reset_cache": "Reset cache",
         "index_cache_saved": "OCR/index cache saved.",
         "index_cache_loaded": "OCR/index cache loaded.",
+        "cache_reset_done": "This account's local cache was reset. Rebuild the index to create a fresh PaddleOCR cache.",
         "index_cache_help": "Use this as a free JSONL cloud database so OCR does not need to run again after every redeploy.",
         "index_cache_folder": "OCR/index cache folder",
         "index_cache_settings": "OCR/index cache settings",
@@ -238,6 +251,7 @@ TRANSLATIONS = {
         "cache_marker": "Cache marker",
         "cache_loaded_marker": "OCR/index cache was last loaded from Google Drive.",
         "cache_saved_marker": "OCR/index cache was last saved to Google Drive.",
+        "cache_reset_marker": "This account's local cache was last reset.",
         "cache_location": "Cache location",
         "cache_files_found": "Cache files detected",
         "active_service_account": "Active service account",
@@ -281,9 +295,9 @@ TRANSLATIONS = {
         "missing_api": "GEMINI_API_KEY is missing. Check your .env file.",
         "gemini_error": "Gemini API error",
         "data_paths_note": (
-            "data/pdfs/ -> PDF standards\n"
-            "data/index/chunks.jsonl -> excerpt database\n"
-            "data/index/standards_index.json -> PDF metadata"
+            "data/users/<account>/pdfs/ -> per-Google-account PDF standards\n"
+            "data/users/<account>/index/chunks.jsonl -> per-account excerpt database\n"
+            "data/users/<account>/index/standards_index.json -> per-account PDF metadata"
         ),
     },
 }

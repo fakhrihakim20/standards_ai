@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -8,13 +9,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from .utils import CHUNKS_PATH, read_jsonl
 
 
-def search_chunks(query: str, body: str | None = None, top_k: int = 8) -> list[dict]:
+def search_chunks(query: str, body: str | None = None, top_k: int = 8, chunks_path: Path = CHUNKS_PATH) -> list[dict]:
     """Search indexed chunks with TF-IDF plus a small keyword overlap boost."""
     query = (query or "").strip()
     if not query:
         return []
 
-    rows = read_jsonl(CHUNKS_PATH)
+    rows = read_jsonl(chunks_path)
     if body and body.upper() != "ALL":
         rows = [row for row in rows if row.get("body") == body.upper()]
     if not rows:

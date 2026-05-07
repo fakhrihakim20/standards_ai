@@ -288,9 +288,9 @@ def _local_relative_pdf_path(drive_path: str) -> Path:
     return Path(*parts) if parts else Path(Path(drive_path).name)
 
 
-def _manifest_by_file_id() -> dict[str, dict[str, Any]]:
+def _manifest_by_file_id(manifest_path: Path = DRIVE_MANIFEST_PATH) -> dict[str, dict[str, Any]]:
     """Return previous Drive manifest entries keyed by Drive file id."""
-    entries = read_json(DRIVE_MANIFEST_PATH, [])
+    entries = read_json(manifest_path, [])
     if not isinstance(entries, list):
         return {}
     return {
@@ -322,6 +322,7 @@ def sync_drive_pdfs(
     max_depth: int = 2,
     max_files: int | None = 100,
     path_filter: str | None = None,
+    drive_manifest_path: Path = DRIVE_MANIFEST_PATH,
 ) -> dict[str, Any]:
     """Download PDFs from Google Drive into the local PDF folder.
 
@@ -341,7 +342,7 @@ def sync_drive_pdfs(
         max_files=max_files,
         path_filter=path_filter,
     )
-    previous_manifest = _manifest_by_file_id()
+    previous_manifest = _manifest_by_file_id(drive_manifest_path)
     downloaded: list[str] = []
     skipped: list[str] = []
     locations: list[dict[str, str]] = []

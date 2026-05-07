@@ -383,7 +383,13 @@ def load_user_settings(email: str, folder_id: str | None = None, service_account
         raise CloudStoreError(str(exc)) from exc
 
 
-def save_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, Any]:
+def save_index_cache(
+    folder_id: str | None = None,
+    service_account_info: Any = None,
+    chunks_path: Path = CHUNKS_PATH,
+    standards_index_path: Path = STANDARDS_INDEX_PATH,
+    drive_manifest_path: Path = DRIVE_MANIFEST_PATH,
+) -> dict[str, Any]:
     """Save local OCR/search index files to Google Drive as a lightweight cloud database."""
     root_folder_id = ""
     try:
@@ -397,9 +403,9 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
                 "create new files there. Create these files first, then retry: "
                 + ", ".join(missing_files)
             )
-        chunks_text = CHUNKS_PATH.read_text(encoding="utf-8") if CHUNKS_PATH.exists() else ""
-        standards_text = STANDARDS_INDEX_PATH.read_text(encoding="utf-8") if STANDARDS_INDEX_PATH.exists() else "[]"
-        drive_manifest_text = DRIVE_MANIFEST_PATH.read_text(encoding="utf-8") if DRIVE_MANIFEST_PATH.exists() else "[]"
+        chunks_text = chunks_path.read_text(encoding="utf-8") if chunks_path.exists() else ""
+        standards_text = standards_index_path.read_text(encoding="utf-8") if standards_index_path.exists() else "[]"
+        drive_manifest_text = drive_manifest_path.read_text(encoding="utf-8") if drive_manifest_path.exists() else "[]"
         chunks_name = _target_cache_name(service, index_folder, CHUNKS_CACHE_NAMES)
         standards_name = _target_cache_name(service, index_folder, STANDARDS_CACHE_NAMES)
         manifest_name = _target_cache_name(service, index_folder, DRIVE_MANIFEST_CACHE_NAMES)
@@ -407,7 +413,7 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
         upload_text_file(service, index_folder, standards_name, standards_text, mime_type="application/json")
         upload_text_file(service, index_folder, manifest_name, drive_manifest_text, mime_type="application/json")
         return {
-            "chunks": len(read_jsonl(CHUNKS_PATH)),
+            "chunks": len(read_jsonl(chunks_path)),
             "standards": len(json.loads(standards_text)),
             "cache_location": cache_location,
             "cache_files": [chunks_name, standards_name, manifest_name],
@@ -418,7 +424,13 @@ def save_index_cache(folder_id: str | None = None, service_account_info: Any = N
         raise CloudStoreError(str(exc)) from exc
 
 
-def load_index_cache(folder_id: str | None = None, service_account_info: Any = None) -> dict[str, Any]:
+def load_index_cache(
+    folder_id: str | None = None,
+    service_account_info: Any = None,
+    chunks_path: Path = CHUNKS_PATH,
+    standards_index_path: Path = STANDARDS_INDEX_PATH,
+    drive_manifest_path: Path = DRIVE_MANIFEST_PATH,
+) -> dict[str, Any]:
     """Load cached OCR/search index files from Google Drive into local JSONL/JSON."""
     root_folder_id = ""
     try:
@@ -443,9 +455,9 @@ def load_index_cache(folder_id: str | None = None, service_account_info: Any = N
         rows = _parse_chunks_cache_file(chunks_name or "chunks.jsonl", chunks_text)
         standards = _parse_json_cache_file(standards_name or "standards_index.json", standards_text, [])
         drive_manifest = _parse_json_cache_file(manifest_name or "drive_manifest.json", drive_manifest_text or "[]", [])
-        write_jsonl(CHUNKS_PATH, rows)
-        write_json(STANDARDS_INDEX_PATH, standards)
-        write_json(DRIVE_MANIFEST_PATH, drive_manifest)
+        write_jsonl(chunks_path, rows)
+        write_json(standards_index_path, standards)
+        write_json(drive_manifest_path, drive_manifest)
         return {
             "chunks": len(rows),
             "standards": len(standards),

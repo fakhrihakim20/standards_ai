@@ -12,6 +12,7 @@ def extract_pdf_pages(
     pdf_path: Path,
     use_ocr: bool = False,
     ocr_language: str = "eng+ind",
+    ocr_engine: str = "paddleocr",
     ocr_min_chars: int = 80,
 ) -> tuple[list[dict], list[str]]:
     """Extract text page by page with PyMuPDF.
@@ -35,7 +36,7 @@ def extract_pdf_pages(
             extraction_method = "text"
             if use_ocr and len(text) < ocr_min_chars:
                 try:
-                    ocr_text = ocr_pdf_page(page, language=ocr_language)
+                    ocr_text = ocr_pdf_page(page, language=ocr_language, engine=ocr_engine)
                     if len(ocr_text) > len(text):
                         text = ocr_text
                         extraction_method = "ocr"

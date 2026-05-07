@@ -27,7 +27,7 @@ def list_pdfs(pdf_dir: Path = PDF_DIR) -> list[Path]:
     return sorted(pdf_dir.rglob("*.pdf"))
 
 
-def _pdf_fingerprint(pdf_path: Path, use_ocr: bool, ocr_language: str) -> dict:
+def _pdf_fingerprint(pdf_path: Path, use_ocr: bool, ocr_language: str, ocr_engine: str = "paddleocr") -> dict:
     """Return metadata used to decide whether a PDF needs re-indexing."""
     stat = pdf_path.stat()
     return {
@@ -35,6 +35,7 @@ def _pdf_fingerprint(pdf_path: Path, use_ocr: bool, ocr_language: str) -> dict:
         "file_mtime_ns": stat.st_mtime_ns,
         "index_use_ocr": bool(use_ocr),
         "index_ocr_language": ocr_language,
+        "index_ocr_engine": ocr_engine,
     }
 
 
@@ -47,19 +48,23 @@ def build_index(
     pdf_dir: Path = PDF_DIR,
     use_ocr: bool = False,
     ocr_language: str = "eng+ind",
+    ocr_engine: str = "paddleocr",
     force_rebuild: bool = False,
     progress_callback=None,
+    chunks_path: Path = CHUNKS_PATH,
+    standards_index_path: Path = STANDARDS_INDEX_PATH,
+    drive_manifest_path: Path = DRIVE_MANIFEST_PATH,
 ) -> dict:
     """Extract PDFs and build JSONL/JSON indexes, reusing unchanged files."""
     ensure_data_dirs()
     pdfs = list_pdfs(pdf_dir)
     drive_manifest = {
         item.get("file"): item
-        for item in read_json(DRIVE_MANIFEST_PATH, [])
+        for item in read_json(drive_manifest_path, [])
         if item.get("file")
     }
-    existing_chunks = read_jsonl(CHUNKS_PATH)
-    existing_standards = read_json(STANDARDS_INDEX_PATH, [])
+    existing_chunks = read_jsonl(chunks_path)
+    existing_standards = read_json(standards_index_path, [])
     chunks_by_file: dict[str, list[dict]] = {}
     standards_by_file = {
         item.get("source_file"): item
@@ -86,8 +91,8 @@ def build_index(
                 "skipped": 0,
                 "warnings": ["No local PDF files found. Existing index cache was kept."],
             }
-        write_jsonl(CHUNKS_PATH, [])
-        write_json(STANDARDS_INDEX_PATH, [])
+        write_jsonl(chunks_path, [])
+        write_json(standards_index_path, [])
         return {"standards": 0, "chunks": 0, "rebuilt": 0, "skipped": 0, "warnings": ["No PDF files found."]}
 
     total = len(pdfs)
@@ -96,7 +101,7 @@ def build_index(
         standard_number = detect_standard_number(pdf_path.name, body)
         source_file = str(pdf_path.relative_to(pdf_dir)).replace("\\", "/")
         drive_info = drive_manifest.get(source_file, {})
-        fingerprint = _pdf_fingerprint(pdf_path, use_ocr, ocr_language)
+        fingerprint = _pdf_fingerprint(pdf_path, use_ocr, ocr_language, ocr_engine)
         existing_standard = standards_by_file.get(source_file)
         if (
             not force_rebuild
@@ -113,7 +118,12 @@ def build_index(
 
         if progress_callback:
             progress_callback(file_index, total, source_file, "index")
-        pages, pdf_warnings = extract_pdf_pages(pdf_path, use_ocr=use_ocr, ocr_language=ocr_language)
+        pages, pdf_warnings = extract_pdf_pages(
+            pdf_path,
+            use_ocr=use_ocr,
+            ocr_language=ocr_language,
+            ocr_engine=ocr_engine,
+        )
         warnings.extend(pdf_warnings)
         chunk_count = 0
         current_clause = ""
@@ -171,8 +181,8 @@ def build_index(
             }
         )
 
-    write_jsonl(CHUNKS_PATH, chunks)
-    write_json(STANDARDS_INDEX_PATH, standards)
+    write_jsonl(chunks_path, chunks)
+    write_json(standards_index_path, standards)
     return {
         "standards": len(standards),
         "chunks": len(chunks),

@@ -29,7 +29,15 @@ from src.i18n import LANGUAGES, t
 from src.indexing import build_index, list_pdfs
 from src.prompts import build_ask_prompt, build_compare_prompt
 from src.search import search_chunks
-from src.utils import BODIES, CHUNKS_PATH, DRIVE_MANIFEST_PATH, PDF_DIR, STANDARDS_INDEX_PATH, ensure_data_dirs, read_json, read_jsonl, write_json
+from src.utils import (
+    BODIES,
+    ensure_data_dirs,
+    ensure_user_data_dirs,
+    read_json,
+    read_jsonl,
+    reset_user_cache,
+    write_json,
+)
 
 
 def apply_material_you_theme(theme_mode: str) -> None:
@@ -799,29 +807,39 @@ def service_account_email_from_json(raw_json: str | None) -> str:
         return ""
 
 
-def load_defaults_to_session(lang: str) -> None:
+def load_defaults_to_session(lang: str, silent: bool = False) -> None:
     """Load encrypted per-user defaults from Drive into session state."""
+    email = current_user_email()
     try:
-        settings = load_user_settings(
-            current_user_email(),
-            folder_id=st.session_state.get("drive_folder_input") or None,
-            service_account_info=get_session_drive_json(),
-        )
+        try:
+            settings = load_user_settings(email)
+        except (GoogleDriveConfigError, CloudStoreError):
+            settings = load_user_settings(
+                email,
+                folder_id=st.session_state.get("drive_folder_input") or None,
+                service_account_info=get_session_drive_json(),
+            )
         if not settings:
-            st.toast(t(lang, "defaults_not_found"))
+            if not silent:
+                st.toast(t(lang, "defaults_not_found"))
             return
         st.session_state["custom_gemini_api_key"] = settings.get("gemini_api_key", "")
         st.session_state["custom_gemini_model"] = settings.get("gemini_model", get_model_name())
         st.session_state["drive_folder_input"] = settings.get("drive_folder", "")
         st.session_state["drive_json_paste"] = settings.get("drive_service_account_json", "")
-        st.toast(t(lang, "defaults_loaded"))
+        st.session_state["index_cache_folder_input"] = settings.get("index_cache_folder", "")
+        st.session_state["defaults_loaded_for_user"] = email
+        if not silent:
+            st.toast(t(lang, "defaults_loaded"))
     except MissingEncryptionKeyError:
-        st.toast(t(lang, "encryption_missing"))
+        if not silent:
+            st.toast(t(lang, "encryption_missing"))
     except CloudStoreError as exc:
-        st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
+        if not silent:
+            st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
 
 
-def save_defaults_from_session(lang: str) -> None:
+def save_defaults_from_session(lang: str, silent: bool = False) -> None:
     """Save encrypted per-user defaults from session state to Drive."""
     raw_drive_json = get_session_drive_json()
     settings = {
@@ -830,20 +848,27 @@ def save_defaults_from_session(lang: str) -> None:
         "drive_folder": st.session_state.get("drive_folder_input", ""),
         "drive_service_account_json": raw_drive_json or "",
         "drive_service_account_email": service_account_email_from_json(raw_drive_json),
+        "index_cache_folder": st.session_state.get("index_cache_folder_input", ""),
         "google_account": current_user_email(),
     }
     try:
-        save_user_settings(
-            current_user_email(),
-            settings,
-            folder_id=settings["drive_folder"] or None,
-            service_account_info=raw_drive_json,
-        )
-        st.toast(t(lang, "defaults_saved"))
+        try:
+            save_user_settings(current_user_email(), settings)
+        except (GoogleDriveConfigError, CloudStoreError):
+            save_user_settings(
+                current_user_email(),
+                settings,
+                folder_id=settings["drive_folder"] or None,
+                service_account_info=raw_drive_json,
+            )
+        if not silent:
+            st.toast(t(lang, "defaults_saved"))
     except MissingEncryptionKeyError:
-        st.toast(t(lang, "encryption_missing"))
+        if not silent:
+            st.toast(t(lang, "encryption_missing"))
     except CloudStoreError as exc:
-        st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
+        if not silent:
+            st.toast(f"{t(lang, 'cloud_store_error')}: {exc}")
 
 
 def main() -> None:
@@ -884,6 +909,14 @@ def main() -> None:
 
     st.sidebar.title(t(lang, "app_title"))
     st.sidebar.write(f"**{t(lang, 'logged_in_as')}:** {current_user_name()}")
+    user_email = current_user_email()
+    user_paths = ensure_user_data_dirs(user_email)
+    user_pdf_dir = user_paths["pdf_dir"]
+    user_chunks_path = user_paths["chunks_path"]
+    user_standards_index_path = user_paths["standards_index_path"]
+    user_drive_manifest_path = user_paths["drive_manifest_path"]
+    if st.session_state.get("defaults_loaded_for_user") != user_email:
+        load_defaults_to_session(lang, silent=True)
     if auth_configured():
         st.sidebar.button(t(lang, "logout"), on_click=st.logout)
     st.sidebar.button(t(lang, "load_defaults"), on_click=load_defaults_to_session, args=(lang,))
@@ -900,7 +933,7 @@ def main() -> None:
         key="custom_gemini_model",
     )
     st.sidebar.write(f"**{t(lang, 'gemini_model')}:** `{get_session_gemini_model()}`")
-    st.sidebar.write(f"**{t(lang, 'data_folder')}:** `{PDF_DIR}`")
+    st.sidebar.write(f"**{t(lang, 'data_folder')}:** `{user_pdf_dir}`")
     st.sidebar.info(t(lang, "privacy"))
 
     tabs = st.tabs([t(lang, "index_pdfs"), t(lang, "ask"), t(lang, "compare"), t(lang, "settings")])
@@ -961,15 +994,24 @@ def main() -> None:
         drive_col1, drive_col2 = st.columns(2)
         if drive_col1.button(t(lang, "sync_drive"), type="secondary"):
             try:
-                with st.spinner(t(lang, "sync_drive")):
+                with st.status(t(lang, "drive_sync_status_start"), expanded=True) as status:
+                    status.write(t(lang, "drive_sync_status_listing"))
                     sync_result = sync_drive_pdfs(
                         folder_id=drive_folder_input or None,
                         service_account_info=get_session_drive_json(),
+                        dest_dir=user_pdf_dir,
                         recursive=drive_recursive,
                         max_depth=int(drive_max_depth),
                         max_files=None if int(drive_max_files) == 0 else int(drive_max_files),
                         path_filter=drive_path_filter or None,
+                        drive_manifest_path=user_drive_manifest_path,
                     )
+                    status.write(
+                        f"{t(lang, 'drive_sync_status_found')}: {sync_result['available']} | "
+                        f"{t(lang, 'downloaded_files')}: {sync_result['downloaded']} | "
+                        f"{t(lang, 'skipped_files')}: {sync_result.get('skipped', 0)}"
+                    )
+                    update_status(status, t(lang, "drive_sync_status_done"), "complete")
                 drive_col2.metric(t(lang, "drive_pdfs_found"), sync_result["available"])
                 st.success(
                     f"{t(lang, 'drive_sync_success')} "
@@ -977,13 +1019,14 @@ def main() -> None:
                     f"{t(lang, 'skipped_files')}: {sync_result.get('skipped', 0)}"
                 )
                 if sync_result["locations"]:
-                    write_json(DRIVE_MANIFEST_PATH, sync_result["locations"])
+                    write_json(user_drive_manifest_path, sync_result["locations"])
                     st.subheader(t(lang, "drive_locations"))
                     st.dataframe(pd.DataFrame(sync_result["locations"]), use_container_width=True)
                 if sync_result["warnings"]:
                     st.warning(t(lang, "warnings"))
                     for warning in sync_result["warnings"]:
                         st.write(f"- {warning}")
+                save_defaults_from_session(lang, silent=True)
             except GoogleDriveConfigError:
                 st.error(t(lang, "drive_config_missing"))
             except GoogleDriveSyncError as exc:
@@ -991,19 +1034,19 @@ def main() -> None:
         else:
             drive_col2.metric(t(lang, "drive_pdfs_found"), "-")
 
-        standards = read_json(STANDARDS_INDEX_PATH, [])
-        chunks = read_jsonl(CHUNKS_PATH)
+        standards = read_json(user_standards_index_path, [])
+        chunks = read_jsonl(user_chunks_path)
         standards_by_file = {
             item.get("source_file"): item
             for item in standards
             if isinstance(item, dict) and item.get("source_file")
         }
-        pdfs = list_pdfs()
+        pdfs = list_pdfs(user_pdf_dir)
         st.metric(t(lang, "pdfs_found"), len(pdfs))
         if pdfs:
             pdf_status_rows = []
             for pdf_path in pdfs:
-                source_file = str(pdf_path.relative_to(PDF_DIR)).replace("\\", "/")
+                source_file = str(pdf_path.relative_to(user_pdf_dir)).replace("\\", "/")
                 indexed = standards_by_file.get(source_file, {})
                 pdf_status_rows.append(
                     {
@@ -1018,7 +1061,7 @@ def main() -> None:
             st.warning(t(lang, "no_pdfs"))
 
         st.subheader(t(lang, "index_status"))
-        st.write(t(lang, "index_exists") if CHUNKS_PATH.exists() else t(lang, "no_index"))
+        st.write(t(lang, "index_exists") if user_chunks_path.exists() else t(lang, "no_index"))
         col1, col2 = st.columns(2)
         col1.metric(t(lang, "standards_indexed"), len(standards))
         col2.metric(t(lang, "chunks_created"), len(chunks))
@@ -1058,12 +1101,15 @@ def main() -> None:
         cache_folder_id = cache_folder_input or drive_folder_input or None
         if cache_folder_id:
             st.caption(f"{t(lang, 'cache_folder_target')}: `{cache_folder_id}`")
-        cache_col1, cache_col2 = st.columns(2)
+        cache_col1, cache_col2, cache_col3 = st.columns(3)
         if cache_col1.button(t(lang, "load_index_cache")):
             try:
                 cache_result = load_index_cache(
                     folder_id=cache_folder_id,
                     service_account_info=get_session_drive_json(),
+                    chunks_path=user_chunks_path,
+                    standards_index_path=user_standards_index_path,
+                    drive_manifest_path=user_drive_manifest_path,
                 )
                 st.session_state["last_cache_action"] = t(lang, "cache_loaded_marker")
                 st.success(
@@ -1081,6 +1127,9 @@ def main() -> None:
                 cache_result = save_index_cache(
                     folder_id=cache_folder_id,
                     service_account_info=get_session_drive_json(),
+                    chunks_path=user_chunks_path,
+                    standards_index_path=user_standards_index_path,
+                    drive_manifest_path=user_drive_manifest_path,
                 )
                 st.session_state["last_cache_action"] = t(lang, "cache_saved_marker")
                 st.success(
@@ -1093,6 +1142,11 @@ def main() -> None:
                     st.caption(f"{t(lang, 'cache_files_found')}: {', '.join(cache_result['cache_files'])}")
             except CloudStoreError as exc:
                 st.error(f"{t(lang, 'cloud_store_error')}: {exc}")
+        if cache_col3.button(t(lang, "reset_cache")):
+            reset_user_cache(user_email)
+            st.session_state["last_cache_action"] = t(lang, "cache_reset_marker")
+            st.success(t(lang, "cache_reset_done"))
+            st.rerun()
         use_ocr = st.checkbox(t(lang, "use_ocr"), value=True, help=t(lang, "ocr_help"))
         ocr_language = st.selectbox(t(lang, "ocr_language"), ["eng+ind", "eng", "ind"], index=0)
         force_rebuild = st.checkbox(t(lang, "force_rebuild"), value=False, help=t(lang, "force_rebuild_help"))
@@ -1107,10 +1161,15 @@ def main() -> None:
                 progress_text.write(f"{action_label} {current}/{total}: `{source_file}`")
 
             result = build_index(
+                pdf_dir=user_pdf_dir,
                 use_ocr=use_ocr,
                 ocr_language=ocr_language,
+                ocr_engine="paddleocr",
                 force_rebuild=force_rebuild,
                 progress_callback=update_index_progress,
+                chunks_path=user_chunks_path,
+                standards_index_path=user_standards_index_path,
+                drive_manifest_path=user_drive_manifest_path,
             )
             progress_bar.progress(1.0)
             progress_text.write(t(lang, "index_done"))
@@ -1136,7 +1195,7 @@ def main() -> None:
             else:
                 with st.status(t(lang, "ask_status_start"), expanded=True) as status:
                     status.write(t(lang, "status_searching"))
-                    retrieved = search_chunks(question, body=ask_body, top_k=ask_top_k)
+                    retrieved = search_chunks(question, body=ask_body, top_k=ask_top_k, chunks_path=user_chunks_path)
                     status.write(f"{t(lang, 'status_sources_found')}: {len(retrieved)}")
                     if not retrieved:
                         update_status(status, t(lang, "status_no_sources"), "error")
@@ -1180,7 +1239,7 @@ def main() -> None:
             else:
                 with st.status(t(lang, "compare_status_start"), expanded=True) as status:
                     status.write(t(lang, "status_searching_by_body"))
-                    grouped = retrieve_by_body(topic, selected, compare_top_k)
+                    grouped = retrieve_by_body(topic, selected, compare_top_k, chunks_path=user_chunks_path)
                     evidence_count = sum(len(items) for items in grouped.values())
                     status.write(f"{t(lang, 'status_sources_found')}: {evidence_count}")
                     if not any(grouped.values()):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,42 @@ def ensure_data_dirs() -> None:
     """Create local data folders used by the prototype."""
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def safe_user_slug(email: str) -> str:
+    """Create a filesystem-safe user slug for per-account local data."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", (email or "guest").strip().lower()).strip("._-")
+    return cleaned[:80] or "guest"
+
+
+def user_data_paths(email: str) -> dict[str, Path]:
+    """Return per-Google-account data paths for PDFs and indexes."""
+    user_root = DATA_DIR / "users" / safe_user_slug(email)
+    index_dir = user_root / "index"
+    return {
+        "root": user_root,
+        "pdf_dir": user_root / "pdfs",
+        "index_dir": index_dir,
+        "chunks_path": index_dir / "chunks.jsonl",
+        "standards_index_path": index_dir / "standards_index.json",
+        "drive_manifest_path": index_dir / "drive_manifest.json",
+    }
+
+
+def ensure_user_data_dirs(email: str) -> dict[str, Path]:
+    """Create and return per-account data directories."""
+    paths = user_data_paths(email)
+    paths["pdf_dir"].mkdir(parents=True, exist_ok=True)
+    paths["index_dir"].mkdir(parents=True, exist_ok=True)
+    return paths
+
+
+def reset_user_cache(email: str) -> None:
+    """Delete local PDFs and OCR/index files for one account."""
+    user_root = user_data_paths(email)["root"]
+    if user_root.exists():
+        shutil.rmtree(user_root)
+    ensure_user_data_dirs(email)
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
