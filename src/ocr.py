@@ -99,31 +99,13 @@ def _paddle_ocr_image(image_path: Path) -> str:
     return clean_text("\n".join(_extract_texts_from_paddle_result(result)))
 
 
-def _tesseract_ocr_image(image_path: Path, language: str) -> str:
-    try:
-        import pytesseract
-        from PIL import Image
-    except ModuleNotFoundError as exc:
-        raise OcrUnavailableError("Tesseract dependencies are not installed.") from exc
-
-    try:
-        return clean_text(pytesseract.image_to_string(Image.open(image_path), lang=language) or "")
-    except pytesseract.TesseractNotFoundError as exc:
-        raise OcrUnavailableError("Tesseract executable is not installed.") from exc
-    except pytesseract.TesseractError as exc:
-        raise OcrUnavailableError(f"Tesseract OCR failed: {exc}") from exc
-
-
 def ocr_pdf_page(page: fitz.Page, language: str = "eng+ind", dpi: int = 220, engine: str = "paddleocr") -> str:
-    """Render a PDF page and extract text with PaddleOCR by default."""
+    """Render a PDF page and extract text with PaddleOCR only."""
     image_path = _render_page_to_png(page, dpi)
     try:
-        if engine == "tesseract":
-            return _tesseract_ocr_image(image_path, language)
-        try:
-            return _paddle_ocr_image(image_path)
-        except OcrUnavailableError:
-            return _tesseract_ocr_image(image_path, language)
+        if engine != "paddleocr":
+            raise OcrUnavailableError("Only PaddleOCR is enabled for OCR.")
+        return _paddle_ocr_image(image_path)
     finally:
         try:
             image_path.unlink(missing_ok=True)

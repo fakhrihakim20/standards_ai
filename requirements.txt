@@ -7,5 +7,4 @@ google-genai>=0.6.0
 google-api-python-client>=2.150
 google-auth>=2.30
 python-dotenv>=1.0
-pytesseract>=0.3.13
 cryptography>=42.0
